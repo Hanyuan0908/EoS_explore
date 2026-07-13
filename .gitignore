@@ -1,0 +1,9 @@
+.DS_Store
+# Belokurov's reference clone (has its own git; re-clone on each machine):
+#   git clone git@github.com:vasilybelokurov/eos-figures.git
+eos-figures/
+**/__pycache__/
+**/.ipynb_checkpoints/
+*.pyc
+.mplconfig/
+.cache/
