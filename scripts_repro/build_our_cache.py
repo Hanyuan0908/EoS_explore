@@ -12,7 +12,13 @@ from astropy.table import Table
 REPO = Path('/Users/hanyuan/Library/CloudStorage/Dropbox/python_script/EoS_explore/eos-figures')
 sys.path.insert(0, str(REPO))
 
+import eos_figures.data as efd
 from eos_figures.data import build_cache, satellite_out_mask
+
+# carry extra abundances through the cache (reference kept only some of their errors)
+for extra in ('C_FE', 'N_FE', 'NI_FE', 'TI_FE', 'TI_FE_ERR'):
+    if extra not in efd.APOGEE_COLUMNS:
+        efd.APOGEE_COLUMNS.append(extra)
 
 APO = '/Users/hanyuan/Desktop/PhD_projects/spectroscopic_catalogues/APOGEE/APOGEE_DR17_all.fits'
 ANN = '/Users/hanyuan/Desktop/PhD_projects/spectroscopic_catalogues/APOGEE/apogee_astroNN-DR17.fits'

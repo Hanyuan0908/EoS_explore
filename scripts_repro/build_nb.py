@@ -155,6 +155,139 @@ plt.show()
 """))
 
 cells.append(md(
+"""## Figures 2b / 2c — same populations for [N/Fe] and [C/Fe]
+Identical to Fig 2 (top: column-normalised density; bottom: median $V_{\\rm tan}$) but for
+[N/Fe] and [C/Fe] instead of [Al/Fe]. The Al-specific guide lines are dropped (they don't
+apply to N/C). Note [C/Fe] and [N/Fe] are affected by CN dredge-up in giants, so [N/Fe] is
+enhanced and the sequences partly trace stellar mass/age as well as birth abundance."""))
+cells.append(code(
+"""def pops_plane(ycol, yr, ylabel, fname):
+    \"\"\"Reference Fig 2 layout (accreted / high-a / low-a) for an arbitrary [X/Fe].\"\"\"
+    y = cat[ycol]
+    fig, ax = setup_axes(3, nrows=2, figsize=(10, 6))
+    specs = [("acc", "accreted", c.perc),
+             ("thick", r"high-$\\alpha$", c.perc2),
+             ("thin", r"low-$\\alpha$", c.perc2)]
+    hist_cache, mask_cache = {}, {}
+    for i, (mk, title, perc) in enumerate(specs):
+        h, xe, ye = hist2d(cat["fe_h"][m[mk]], y[m[mk]], c.fehr, yr, c.nfeh, c.nal2, normalize="x")
+        hist_cache[mk] = (h, xe, ye); mask_cache[mk] = _idl_low_density_mask(h, perc, c.white_lim)
+        density_panel(ax[i], h, xe, ye, percentiles=perc)
+        ax[i].set_xlim(c.fehr); ax[i].set_ylim(yr)
+        label_axes(ax[i], "[Fe/H]", ylabel, title)
+    for i, (mk, title, _) in enumerate(specs, start=3):
+        h, xe, ye = hist_cache[mk]
+        vmask = (m[mk] & np.isfinite(cat["galvt"])
+                 & (cat["galvt"] >= c.vtanr[0]) & (cat["galvt"] <= c.vtanr[1]))
+        med, _, _ = stat2d(cat["fe_h"][vmask], y[vmask], cat["galvt"][vmask], c.fehr, yr, c.nfeh, c.nal2)
+        h_med, _, _ = hist2d(cat["fe_h"][vmask], y[vmask], c.fehr, yr, c.nfeh, c.nal2)
+        med = np.nan_to_num(med, nan=0.0); med[h_med <= 2] = 0.0
+        value_panel(ax[i], med, xe, ye, *c.mm_vtan, mask=mask_cache[mk],
+                    cmap="RdYlBu_r", colorbar_label=r"$V_{\\rm tan}$ [km/s]" if i == 4 else None)
+        ax[i].set_xlim(c.fehr); ax[i].set_ylim(yr)
+        label_axes(ax[i], "[Fe/H]", ylabel, title)
+    ax[5].text(-1.3, yr[0] + 0.85 * (yr[1] - yr[0]), "Eos?", fontsize=9)
+    fig.savefig(FIGDIR / fname, dpi=150, bbox_inches='tight')
+    plt.show()
+
+pops_plane("n_fe", (-0.5, 1.0), "[N/Fe]", "01_fig2_nfe_pops.png")
+"""))
+cells.append(code(
+"""pops_plane("c_fe", (-0.6, 0.4), "[C/Fe]", "01_fig2_cfe_pops.png")
+"""))
+
+cells.append(md(
+"""## Eos vs low-α disc: nitrogen dispersion, with the high-α (Splash) benchmark
+Left two panels (row-normalised, so each $V_{\\rm tan}$ level is equally weighted): high-α and
+low-α samples in [Fe/H]-$V_{\\rm tan}$, each with two boxes over
+-0.8<[Fe/H]<-0.5 — a low-$V_{\\rm tan}$ box ($-75<V_{\\rm tan}<75$: **Eos** in low-α, **Splash** in
+high-α) and a disc box ($150<V_{\\rm tan}<300$). Right: robust $\\sigma_{[N/Fe]}$ (1.48xMAD) vs [Fe/H]
+for all four bands, coloured to match the boxes (low-α solid, high-α dashed). Benchmark: the
+low-$V_{\\rm tan}$ N excess appears in low-α (Eos) but NOT in high-α (Splash), so it is not a
+generic heating / low-$V_{\\rm tan}$ effect."""))
+cells.append(code(
+"""from matplotlib.patches import Rectangle
+feh = np.asarray(cat["fe_h"], float); vphi = np.asarray(cat["galvt"], float)
+FEHR_BOX = (-0.8, -0.5)
+VLO, VHI = (-75, 75), (150, 300)
+series = [("thin_al",  VLO, "royalblue",  "-",  r"low-$\\alpha$ Eos ($V_{tan}<75$)"),
+          ("thin_al",  VHI, "firebrick",  "-",  r"low-$\\alpha$ disc ($V_{tan}>150$)"),
+          ("thick_al", VLO, "darkorange", "--", r"high-$\\alpha$ Splash ($V_{tan}<75$)"),
+          ("thick_al", VHI, "seagreen",   "--", r"high-$\\alpha$ disc ($V_{tan}>150$)")]
+
+def running_sigma(band, x, y, xr, nb=3, minn=10):
+    edges = np.linspace(*xr, nb+1); cen = 0.5*(edges[:-1]+edges[1:])
+    sig = np.full(nb, np.nan); err = np.full(nb, np.nan)
+    for i in range(nb):
+        b = band & (x >= edges[i]) & (x < edges[i+1]) & np.isfinite(y); yy = y[b]
+        if yy.size >= minn:
+            s = 1.4826*np.median(np.abs(yy-np.median(yy))); sig[i] = s; err[i] = s/np.sqrt(2*yy.size)
+    return cen, sig, err
+
+def disp_figure(ycol, ylabel, title, fname, ann_low, ann_high, ylo=0.04):
+    y = np.asarray(cat[ycol], float)
+    fig, ax = plt.subplots(1, 3, figsize=(15.5, 4.3), constrained_layout=True)
+    for p, (pop, ptitle) in enumerate([("thick_al", r"high-$\\alpha$"), ("thin_al", r"low-$\\alpha$")]):
+        P = np.asarray(m[pop], bool) & np.isfinite(feh) & np.isfinite(vphi)
+        h, xe, ye = hist2d(feh[P], vphi[P], (-1.5, 0.5), (-200, 350), 70, 70, normalize="y")
+        density_panel(ax[p], h, xe, ye, percentiles=(2, 98))
+        ax[p].axhline(0, color="k", lw=0.6, ls=":")
+        for spop, (vlo, vhi), col, ls, lab in series:
+            if spop == pop:
+                ax[p].add_patch(Rectangle((FEHR_BOX[0], vlo), FEHR_BOX[1]-FEHR_BOX[0], vhi-vlo,
+                                          fill=False, edgecolor=col, lw=2.2, zorder=5))
+        ax[p].set_xlim(-1.5, 0.5); ax[p].set_ylim(-200, 350)
+        label_axes(ax[p], "[Fe/H]", r"$V_{\\rm tan}$ [km/s]", ptitle + " sample")
+    for pop, (vlo, vhi), col, ls, lab in series:
+        band = np.asarray(m[pop], bool) & (vphi > vlo) & (vphi < vhi)
+        cen, sig, err = running_sigma(band, feh, y, FEHR_BOX)
+        ax[2].errorbar(cen, sig, yerr=err, color=col, ls=ls, marker="o", ms=5, lw=1.6, capsize=3, label=lab)
+    ax[2].set_xlim(-0.82, -0.48); ax[2].set_ylim(ylo, None)
+    ax[2].text(0.5, 0.12, ann_low, transform=ax[2].transAxes, ha="center", fontsize=8, color="0.3")
+    ax[2].text(0.5, 0.06, ann_high, transform=ax[2].transAxes, ha="center", fontsize=8, color="0.3")
+    label_axes(ax[2], "[Fe/H]", ylabel, title)
+    ax[2].legend(frameon=False, fontsize=7.5, loc="upper right")
+    fig.savefig(FIGDIR / fname, dpi=150, bbox_inches='tight')
+    plt.show()
+
+disp_figure("n_fe", r"$\\sigma_{\\rm [N/Fe]}$ [dex]", r"N dispersion: low- vs high-$V_{\\rm tan}$",
+            "01_eos_Ndispersion.png",
+            r"matched $\\Delta\\sigma_N$:  low-$\\alpha$ $+0.024\\pm0.011$ (2$\\sigma$)",
+            r"high-$\\alpha$ $-0.006\\pm0.003$ (no excess)")
+"""))
+
+cells.append(md(
+"""## Same figure for carbon ([C/Fe]) — the control
+Carbon behaves differently from nitrogen: the low-$V_{\\rm tan}$ excess is small and appears in
+**both** populations (matched $\\Delta\\sigma_C$: low-α $+0.009\\pm0.007$, high-α $+0.007\\pm0.002$),
+i.e. it is ~3x weaker than N's and NOT low-α-specific. This confirms the Eos signal is a
+nitrogen effect, not a generic carbon/CNO one."""))
+cells.append(code(
+"""disp_figure("c_fe", r"$\\sigma_{\\rm [C/Fe]}$ [dex]", r"C dispersion: low- vs high-$V_{\\rm tan}$",
+            "01_eos_Cdispersion.png",
+            r"matched $\\Delta\\sigma_C$:  low-$\\alpha$ $+0.009\\pm0.007$ (marginal)",
+            r"high-$\\alpha$ $+0.007\\pm0.002$ (both small)", ylo=0.03)
+"""))
+
+cells.append(md(
+"""## Same figure for nickel ([Ni/Fe]) and titanium ([Ti/Fe])
+Ni (iron-peak) is small in both populations (low-α $+0.006\\pm0.004$, high-α $+0.004\\pm0.001$).
+Ti (an α-element) shows a **notable low-α excess** ($+0.017\\pm0.008$, ~2σ) with a smaller high-α
+one ($+0.007\\pm0.002$) — so, like N, the larger dispersion sits in the low-α (Eos) band."""))
+cells.append(code(
+"""disp_figure("ni_fe", r"$\\sigma_{\\rm [Ni/Fe]}$ [dex]", r"Ni dispersion: low- vs high-$V_{\\rm tan}$",
+            "01_eos_Nidispersion.png",
+            r"matched $\\Delta\\sigma_{Ni}$:  low-$\\alpha$ $+0.006\\pm0.004$ (marginal)",
+            r"high-$\\alpha$ $+0.004\\pm0.001$ (both small)", ylo=0.02)
+"""))
+cells.append(code(
+"""disp_figure("ti_fe", r"$\\sigma_{\\rm [Ti/Fe]}$ [dex]", r"Ti dispersion: low- vs high-$V_{\\rm tan}$",
+            "01_eos_Tidispersion.png",
+            r"matched $\\Delta\\sigma_{Ti}$:  low-$\\alpha$ $+0.017\\pm0.008$ ($\\sim2\\sigma$)",
+            r"high-$\\alpha$ $+0.007\\pm0.002$", ylo=0.03)
+"""))
+
+cells.append(md(
 """## Figure 3 — Energy–Lz of the three populations
 Validation: the **Eos** clump sits at $|L_z|\\approx0$, $E\\times10^{-5}\\approx-0.55$ in the low-α panel."""))
 cells.append(code(
