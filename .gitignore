@@ -7,3 +7,10 @@ eos-figures/
 *.pyc
 .mplconfig/
 .cache/
+
+# Auriga Au18 work: derived arrays (regenerable from auriga/*.py scripts; several >100MB)
+auriga/out/
+# External package clone (bitbucket grandrt/auriga_public) — has its own git
+auriga/auriga_public_src/
+# Bulk simulation dumps kept locally only
+jrun003.*.gz

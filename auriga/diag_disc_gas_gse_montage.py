@@ -1,0 +1,120 @@
+"""Zoomed disc-region view of the Au18 merger: gas density + GS/E stars + newborn stars.
+
+Two figures, face-on (x-y) and edge-on (x-z), in the disc-aligned frame.  Grey =
+gas surface density, blue = clean GS/E debris, red = stars born since the previous
+snapshot.  Purpose: check whether the newly forming stars trace the GS/E gas, i.e.
+whether the born-radial (B) channel really is merger-induced star formation.
+"""
+import gc, glob, os
+import h5py
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
+import config_au18 as C
+from auriga_public import snapshot as snap_mod, subhalos as sub_mod, util
+
+os.makedirs(C.FIG_DIR, exist_ok=True)
+
+SNAP_LIST = [66, 68, 70, 71, 72, 73, 74, 75, 76, 78, 80, 82]
+W = 20.0          # half-width of the zoom [kpc]
+NBIN = 260
+GSE_IDS = np.load(C.OUT_DIR + '/gse_clean_ids.npy')
+
+
+def scale_factor(sn):
+    f = sorted(glob.glob(f'{C.SIM_DIR}/snapdir_{sn:03d}/snapshot_{sn:03d}.*.hdf5'))[0]
+    with h5py.File(f, 'r') as h:
+        return float(h['Header'].attrs['Time'])
+
+
+def disc_frame(sn):
+    """Halo-centred, disc-aligned star and gas coordinates in kpc.
+
+    Reproduces util.align_galaxy's convention (rotation matrix from the inner
+    stars, disc angular momentum on component 0) and applies the same matrix to
+    the gas, which lives in a separate snapshot object.
+    """
+    s = snap_mod.load_snapshot(sn, 4, snappath=C.SIM_DIR,
+        loadlist=['ParticleIDs', 'Coordinates', 'Velocities', 'Masses',
+                  'GFM_StellarFormationTime'])
+    real = s.data['GFM_StellarFormationTime'] > 0
+    for k in list(s.data): s.data[k] = s.data[k][real]
+    sf = sub_mod.subfind(sn, directory=C.SIM_DIR, loadlist=['GroupFirstSub', 'SubhaloPos'])
+    cen = sf.data['SubhaloPos'][int(sf.data['GroupFirstSub'][0])]
+    util.CentreOnHalo(s, cen)
+    rr = np.sqrt((s.data['Coordinates'] ** 2).sum(1))
+    idx, = np.where(rr < .01)
+    bulk = np.average(s.data['Velocities'][idx], axis=0, weights=s.data['Masses'][idx])
+    s.data['Velocities'] -= bulk
+    L = np.cross(s.data['Coordinates'][idx, :],
+                 s.data['Velocities'][idx, :] * s.data['Masses'][idx, None]).sum(axis=0)
+    Ldir = L / np.sqrt((L ** 2).sum())
+    xdir, ydir, zdir = util.get_principal_axis(s, idx, L=Ldir)
+    matrix = np.array([xdir, ydir, zdir])
+
+    sxyz = np.dot(s.data['Coordinates'], matrix.T) * 1000.
+    sid = s.data['ParticleIDs']
+    aform = s.data['GFM_StellarFormationTime']
+    del s; gc.collect()
+
+    g = snap_mod.load_snapshot(sn, 0, snappath=C.SIM_DIR, loadlist=['Coordinates', 'Masses'])
+    gxyz = np.dot(g.data['Coordinates'] - cen, matrix.T) * 1000.
+    gm = g.data['Masses'] * C.MASS_TO_MSUN
+    del g; gc.collect()
+    return sxyz, sid, aform, gxyz, gm
+
+
+# comp 0 = disc rotation axis -> 'z'; comps 1,2 = disc plane -> 'x','y'.
+PROJ = {'faceon': dict(i=1, j=2, xlab='x [kpc]', ylab='y [kpc]', tag='face-on (x-y)'),
+        'edgeon': dict(i=1, j=0, xlab='x [kpc]', ylab='z [kpc]', tag='edge-on (x-z)')}
+figs = {k: plt.subplots(3, 4, figsize=(17.5, 13)) for k in PROJ}
+
+print(f'{"snap":>5s} {"t[Gyr]":>7s} {"GSE<20kpc":>10s} {"new":>7s} {"new|z|>1.75":>12s} {"med|z|new":>10s}')
+for k, sn in enumerate(SNAP_LIST):
+    a = scale_factor(sn); a_prev = scale_factor(sn - 1)
+    t = float(C.a_to_age(a)); zred = 1. / a - 1.
+    sxyz, sid, aform, gxyz, gm = disc_frame(sn)
+
+    newborn = (aform > a_prev) & (aform <= a)
+    o = np.argsort(sid); ss = sid[o]
+    p = np.searchsorted(ss, GSE_IDS)
+    ok = (p < len(ss)) & (ss[np.minimum(p, len(ss) - 1)] == GSE_IDS)
+    gse = o[p[ok]]
+
+    cube_g = (np.abs(gxyz) < W).all(axis=1)
+    nz = np.abs(sxyz[newborn, 0])
+    in_new = (np.abs(sxyz[newborn]) < W).all(axis=1)
+    in_gse = (np.abs(sxyz[gse]) < W).all(axis=1)
+    print(f'{sn:5d} {t:7.3f} {in_gse.sum():10,d} {in_new.sum():7,d} '
+          f'{(nz[in_new] > 1.75).mean() if in_new.sum() else np.nan:12.3f} '
+          f'{np.median(nz[in_new]) if in_new.sum() else np.nan:10.2f}')
+
+    for key, cfg in PROJ.items():
+        ax = figs[key][1].flat[k]
+        i, j = cfg['i'], cfg['j']
+        ax.hist2d(gxyz[cube_g, i], gxyz[cube_g, j], weights=gm[cube_g], bins=NBIN,
+                  range=[[-W, W], [-W, W]], cmap='Greys', cmin=1., norm=LogNorm())
+        gs = gse[in_gse]
+        ax.scatter(sxyz[gs, i], sxyz[gs, j], s=2.2, c='#1f6fd0', alpha=.45, lw=0,
+                   rasterized=True, label=f'GS/E ({in_gse.sum():,})')
+        nb = np.flatnonzero(newborn)[in_new]
+        ax.scatter(sxyz[nb, i], sxyz[nb, j], s=2.2, c='crimson', alpha=.55, lw=0,
+                   rasterized=True, label=f'newborn ({in_new.sum():,})')
+        ax.plot(0, 0, '+', color='k', ms=9, mew=1.4)
+        ax.set(xlim=(-W, W), ylim=(-W, W), aspect='equal',
+               title=f'snap {sn}: t={t:.2f} Gyr, z={zred:.2f}')
+        if k == 0: ax.legend(fontsize=7.5, loc='upper right', markerscale=3.5, framealpha=.85)
+        if k // 4 == 2: ax.set_xlabel(cfg['xlab'])
+        if k % 4 == 0: ax.set_ylabel(cfg['ylab'])
+
+    del sxyz, sid, aform, gxyz, gm; gc.collect()
+
+for key, cfg in PROJ.items():
+    fig, _ = figs[key]
+    fig.suptitle(f'Au18 disc region during the GS/E merger, {cfg["tag"]}: gas surface density '
+                 f'(grey), GS/E debris (blue), stars born since previous snapshot (red)',
+                 fontsize=13)
+    fig.tight_layout(rect=[0, 0, 1, .97])
+    out = C.FIG_DIR + f'/au18_disc_gas_gse_{key}.png'
+    fig.savefig(out, dpi=130)
+    print('saved', out)
