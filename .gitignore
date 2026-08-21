@@ -19,3 +19,5 @@ jrun003.*.gz
 # from prep_gastro.py; the snapshots come from the collaborator, not this repo)
 gastro/jrun003.*.0[0-9]*
 gastro/out/*_stars.npz
+gastro/jrun003.*/
+gastro/out/fig5_*.npz

@@ -7,13 +7,15 @@ simulation test of the Eos scenarios alongside `../auriga` (Au18).
 
 | file | |
 |---|---|
-| `jrun003.dwarfM06XY138Z37Vxy20FB20.01000` | **clumpy + merger** (FB20), t = 10 Gyr. Readable. |
+| `jrun003.dwarfM06XY138Z37Vxy20FB20/` | **clumpy + merger** (FB20) = `c.r.c03`. Full snapshot series `.00050`–`.01000` (20 outputs, 0.5 Gyr apart), the `.FeMassFrac`/`.OxMassFrac`/`.iord`/`.timeform` aux arrays for the final snapshot, and the seven `*form.npy` birth arrays (x/y/z, vx/vy/vz, jz). |
 | `jrun003.dwarfM06XY138Z37Vxy20.01000` | **not clumpy + merger**, t = 10 Gyr. **Truncated — unusable** (42 MB of an expected 159 MB; the source `.gz` is corrupt: `invalid compressed data--format violated`). Needs re-fetching from the collaborator. |
 | `jrun003.param` | Unit definition, **reconstructed here** — see below. |
 | `gastro-hanyuan.ipynb` | The collaborator's example notebook (loading, `pid`, accreted flags, plotting). |
-| `gastro_config.py` | Paths, unit constants, Eos/disc cuts, loading + `star_frame`. |
+| `gastro_config.py` | Paths, unit constants, Eos/disc cuts, the satellite-birth definition, loading + `star_frame`. |
 | `prep_gastro.py` | Loads, aligns and solves orbits once per model → `out/<model>_stars.npz`. |
 | `ana_gastro_age_kinematics.py` | The age/kinematics figure. Reads the cache, so it is cheap to re-run. |
+| `gastro_fig5_prep.py` | One pass over the series for the Borbolato et al. (2026) Fig. 5 reproduction. Caches `v_phi` and `R` for **every** star at **every** snapshot, so cuts stay a plotting-time decision. |
+| `ana_gastro_fig5.py` | The Fig. 5 reproduction itself (`figures/gastro_fig5_clumpy_merger.png`). |
 
 Run with the pynbody environment:
 `/data/ioasoft/software/miniforge3/envs/python-3.11-2026-01a/bin/python3`
@@ -34,15 +36,36 @@ That gives M⋆ = 6.2e10, M_dm = 1.3e12, M_gas = 7.9e10 M⊙ and m⋆ = 2.8e4 M�
 Milky-Way-like, so the reconstruction is almost certainly the original system.
 Positions were already in kpc.
 
-## What these snapshots cannot do
+## Units cross-check
 
-* **No `.FeMassFrac` / `.OxMassFrac`.** Only total `metals`, so there is no
-  `[Fe/H]` and no `[O/Fe]`: metallicity is `[M/H] = log10(Z/0.0142)` and there is
-  **no α split**. The Eos analogue here is therefore kinematic, not low-α.
-* **No accreted-particle id lists** (`*_pid_accreted.npy` live in the
-  collaborator's directory), so merger debris cannot be labelled directly.
-* **Only the final snapshot**, so there are no birth kinematics — the born-hot vs
-  heated test is done on the Auriga side only.
+Independent of the reasoning above: the z=0 dark-matter mass spectrum splits into
+three components, one of exactly 100,000 particles totalling **8.846e10 M⊙**.
+Borbolato et al. (2026) §2.2 give the satellite a "total dark matter... mass of
+8.83e10 M⊙" — a 0.2 % match, which fixes the unit system independently.
+
+## Remaining limitations
+
+* **`nonClumpy+merger` is unusable** (see above). It is the paper's control: their
+  headline claim is that a GSE-like merger *without* clumps fails to make a Splash.
+* **The `Isolated Clumpy` model (`c.iso`) is absent.** Figure 5 of Borbolato et al.
+  is four columns — Isolated Clumpy and Clumpy+merger — so only the right-hand
+  half is reproduced here.
+* **No accreted-particle id list** (`{name}_pid_accreted.npy`). Satellite-born
+  stars are identified from their birth site instead — see `satellite_born()` in
+  `gastro_config.py`. That recovers ~85 % of the dwarf's quoted stellar mass, and
+  the residual leaks into the high-α Splash at the 3 % level. The id list is a
+  small file and would settle it exactly.
+* **Aux abundance arrays exist for the final snapshot only.** Not a problem for
+  Fig. 5: populations are selected at z=0 and tracked backwards by array index.
+* **Disc scale length** is measured here (R_d ≈ 1.25 kpc, fit over 3–12 kpc)
+  rather than taken from Table 1 of Amarante et al. (2025). It sets the radial
+  cut, R > 2.4 kpc, that stands in for the observational R_GC > 5 kpc.
+
+## Cross-snapshot identity
+
+GASOLINE appends new star particles to the end of the file, so a star's array
+index is a stable id. Verified explicitly: at all 20 snapshots the `tform` array
+is exactly a prefix of the final snapshot's.
 
 ## Merger epoch
 

@@ -35,6 +35,21 @@ EOS_ECC_MIN = 0.6        # EOS_ECC_MIN
 DISC_VPHI_MIN = 150.0    # DISC_VTAN_MIN
 DISC_ECC_MAX = 0.35      # DISC_ECC_MAX
 
+# Stars formed inside the infalling dwarf.  The accreted-particle id list is not
+# available here, so they are identified from their birth site instead: the dwarf
+# is on an inclined, eccentric orbit, so its stars are born either far out or far
+# off the disc plane, and they are born non-rotating (median v_phi,form = -21
+# km/s, |z_form| = 8.2 kpc) against a prograde, thin disc (+269 km/s, 0.04 kpc).
+# This recovers M* = 7.6e8 Msol against the 8.97e8 Msol the paper quotes for the
+# dwarf at first pericentre, i.e. ~85%; the residual leaks into the high-alpha
+# Splash at the 3% level.  Requesting {name}_pid_accreted.npy would settle it.
+SAT_RFORM = 30.0         # kpc
+SAT_ZFORM = 3.0          # kpc
+
+
+def satellite_born(Rform, zform):
+    return (Rform > SAT_RFORM) | (np.abs(zform) > SAT_ZFORM)
+
 
 def load(model):
     """Load a model, put it in physical units, and align the stellar disc face-on."""
