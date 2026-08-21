@@ -14,3 +14,8 @@ auriga/out/
 auriga/auriga_public_src/
 # Bulk simulation dumps kept locally only
 jrun003.*.gz
+
+# gastro: raw GASOLINE snapshots and the cached per-star arrays (regenerable
+# from prep_gastro.py; the snapshots come from the collaborator, not this repo)
+gastro/jrun003.*.0[0-9]*
+gastro/out/*_stars.npz

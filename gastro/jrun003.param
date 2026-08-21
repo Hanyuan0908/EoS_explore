@@ -1,0 +1,11 @@
+# Reconstructed unit definition for the joaorun003 (Amarante) GASOLINE runs.
+# Not the original run parameter file: dKpcUnit/dMsolUnit were inferred here from
+# the snapshot itself, so that pynbody's physical_units() gives sensible values.
+#   - header time = 10 code units and the snapshot is the t = 10 Gyr output
+#     => time unit ~ 1 Gyr, which the pair below reproduces (0.9778 Gyr).
+#   - dMsolUnit = 2.325e5 with dKpcUnit = 1 is the standard GASOLINE system in
+#     which the velocity unit is exactly 1 km/s.  It gives M* = 6.2e10 Msol,
+#     M_dm = 1.3e12 Msol, m_star = 2.8e4 Msol -- all Milky-Way-like.
+dKpcUnit = 1.0
+dMsolUnit = 2.325e5
+bComove = 0

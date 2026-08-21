@@ -1,6 +1,6 @@
 # Au18 / Eos–Auriga project — progress log (AI-continuable handoff)
 
-Last updated: 2026-07-21. This file is written so a fresh AI assistant (or the user)
+Last updated: 2026-08-21. This file is written so a fresh AI assistant (or the user)
 can pick up the work with full context. Read this first, then `auriga/README.md`.
 
 ---
@@ -20,8 +20,11 @@ zoom — a known GS/E-like merger host (Fattahi et al. 2019, stz159) — to test
 scenarios directly, where we have birth times + birth kinematics + provenance.
 
 **Plan:** (1) date the GS/E merger [DONE], (2) verify the GS/E identification
-[DONE], (3) select in-situ stars formed around the merger and split into
-low-α/high-α × born-hot/born-cold-then-heated to discriminate H vs O [NEXT].
+[DONE], (3) split the in-situ stars formed around the merger into
+born-hot/born-cold-then-heated channels [DONE, §4], (4) measure the age and
+kinematic signature of the Eos analogue and compare it with the observational
+selection, in Au18 and in the gastro models [DONE, §4], (5) see §5 for what is
+still open.
 
 ---
 
@@ -117,6 +120,19 @@ Scripts (run with the astro312 python, from `auriga/`):
 - `diag_merger_montage.py` — 3×4 spatial montage of the merger (uses `gse_clean_ids`).
 - `diag_anisotropy.py` — disc-aligned vR–vφ + β (cyl & sph) for clean GS/E vs disc.
 - `figure_date_merger.py` — 3-panel dating summary (orbit / SFH / chemistry).
+- `channels_au18.py` — the single definition of channels A and B, shared downstream.
+- `ana_premerger_splash.py` — builds channel C (`out/premerger_splash.npz`).
+- `ana_channels_chemistry.py`, `ana_three_channels_chemistry.py` — [X/Fe] comparisons.
+- `ana_birth_height.py`, `ana_birth_radii.py`, `ana_birth_time.py`,
+  `ana_channel_radial_gradient.py` — the birth-property diagnostics behind the cuts.
+- `diag_disc_ABC_montage.py` — face-on/edge-on montages of A, B and C.
+- `ana_z0_kinematic_catalog.py` — **the z=0 catalogue** (in-situ + GS/E; kinematics,
+  orbits, chemistry). Everything below reads it, so it only needs running once.
+- `ana_eos_age_kinematics.py` — Eos analogue selected as in the data; age + orbits.
+- `ana_channels_born_hot.py` — born hot vs heated, and what the observational cut
+  recovers from each channel.
+- `../orbit_tools.py` — spherical-potential r_apo/ecc, density contours, and the
+  local-enhancement statistic. Shared with `../gastro`.
 
 Outputs:
 - `out/gse_clean_ids.npy` — **the clean GS/E star IDs (use this going forward)**.
@@ -124,24 +140,99 @@ Outputs:
 - `out/matched_z0.npz` — all accreted + all in-situ matched to z=0 (ages, [Fe/H], r, mass).
 - `out/gse_track_clean_55_127_2.npz` (+ proxy tracks) — orbital tracks.
 - `out/exsitu_assembled.npz`, `out/gse_proxy_ids.npy` — earlier/superseded.
+- `out/z0_insitu_catalog.npz` — **1.98M in-situ stars + the GS/E debris** with
+  v_phi/v_R/v_z, L_z, E, eps, r_apo, r_peri, ecc, age, [Fe/H] and six [X/Fe].
+- `out/eos_two_channels.npz`, `out/merger_birth_radii.npz`, `out/premerger_splash.npz`
+  — birth + z=0 properties for the A/B and C parent samples.
 - `figures/au18_gse_merger_dating.png`, `au18_gse_merger_montage.png`,
   `au18_gse_anisotropy.png`.
+- `figures/au18_eos_age_kinematics.png`, `au18_channels_born_hot.png`,
+  `au18_eos_channels_chemistry_clean.png` — the current headline figures.
 
 ---
 
-## 4. NEXT (session 2, awaiting user go-ahead)
+## 4. Sessions 2-3: the Eos channels, and the age/kinematic signature
 
-Select **in-situ** stars (all z=0 main-galaxy stars minus ex-situ) born in the
-merger window and split to discriminate Eos scenarios H vs O:
-1. Reuse `out/gse_clean_ids.npy` and the validated disc-aligned frame in
-   `diag_anisotropy.py`.
-2. In-situ merger-epoch sample: birth time ~t=4–6 Gyr (centred on coalescence 5.3;
-   possibly extend earlier to catch the pre-merger onset phase — decision pending).
-3. Chemistry: [Mg/Fe]–[Fe/H] low-α vs high-α (Mg=idx6, Fe=idx8).
-4. Kinematics: compare **birth** vs **present-day** vφ/eccentricity — "born hot"
-   (onset) vs "born cold then heated" (heated) — the direct H-vs-O test.
-5. Identify the Eos analogue = in-situ low-α on hot/non-rotating orbits; check
-   whether it is born hot (favours O) or heated after forming cold (favours H).
+### Session 2 - three in-situ channels around the merger
+In-situ stars were split by *birth* kinematics and birth height, all sharing one
+circularity scale (`channels_au18.py`, `ana_premerger_splash.py`):
 
-Open decisions for the user: (a) GS/E-debris purity vs an E–Lz cut; (b) exact
-in-situ birth-time window (centred on 5.3 Gyr vs reaching earlier).
+| channel | definition | N |
+|---|---|---|
+| **A** heated disc | born cold in the plane during the merger (eps_b>0.7, \|z_b\|<1 kpc), eps_0<0.3 | 948 |
+| **B** born radial | born hot off-plane during the merger (eps_b<0.3, \|z_b\|>3 kpc), eps_0<0.3 | 2,642 |
+| **C** pre-merger Splash | same as A but formed *before* the merger | 3,831 |
+
+Chemistry result (`ana_channels_chemistry.py`, `au18_eos_channels_chemistry_clean.png`):
+GS/E debris sits on its own locus, while **A, B and C overlap almost completely**
+in every [X/Fe]; B departs from the in-situ populations only in [Fe/H]. So B
+formed from *diluted host gas*, not from GS/E gas.
+
+### Session 3 - kinematic + age signature (the current focus)
+A z=0 catalogue of **every** in-situ star was built so the simulation can be cut
+the way the *observations* are, instead of by birth properties
+(`ana_z0_kinematic_catalog.py` -> `out/z0_insitu_catalog.npz`, 1.98M stars):
+v_phi, v_R, v_z, L_z, E, eps, **r_apo, r_peri, eccentricity**, age, [Fe/H] and the
+six [X/Fe]; the GS/E debris is measured identically and stored alongside.
+Turning points come from the spherically-averaged snapshot potential
+(`../orbit_tools.py`, shared with the gastro analysis).
+
+**Applying the APOGEE/LAMOST cuts** (|v_phi|<100 km/s, ecc>0.6, 4<R<30 kpc) to the
+in-situ stars gives 47,270 "Eos-like" stars, median age 10.35 Gyr, [Fe/H]=-0.54
+(`ana_eos_age_kinematics.py`, `au18_eos_age_kinematics.png`):
+
+* the Eos analogue is **old** - median 10.4 Gyr vs 4.8 Gyr for disc orbits, and it
+  sits between the disc and the GS/E debris (11.4 Gyr) in age and in r_apo
+  (14.1 vs 10.2 and 25.5 kpc);
+* star formation into this channel is **enhanced x2.9 at the merger**: 14% of the
+  cohort born at t=4.8-5.6 Gyr ends up Eos-like, against 5% in the intervals
+  either side. It is a burst on the plunge, not a long-lived channel;
+* **age at fixed [Fe/H]**: over the observed Eos regime (-1.1<[Fe/H]<-0.5) the two
+  tracks agree (-0.14 Gyr) - Au18 does *not* reproduce the observed offset there.
+  The +2 to +3 Gyr offset appears only at [Fe/H]>-0.25, where "hot orbit" mostly
+  means old bulge. Note Au18's in-situ [Fe/H] runs ~0.4 dex high, so the observed
+  window maps onto the metal-poor tail of the simulation.
+
+**Born hot or heated** (`ana_channels_born_hot.py`, `au18_channels_born_hot.png`) -
+the test the data cannot do:
+
+| channel | median d(eps) since birth | median r_apo | % passing the observational Eos cut |
+|---|---|---|---|
+| A heated disc | **-0.73** (heated) | 4.0 kpc | 81% |
+| B born radial | **-0.08** (born hot) | **16.0 kpc** | 59% |
+| C pre-merger Splash | **-0.72** (heated) | 5.1 kpc | 47% |
+
+B is the only channel that reaches GS/E-like apocentres; A and C are confined
+inside ~5 kpc. So an observer's Eos sample in Au18 would be a mixture, but the
+part of it on genuinely Eos-like *orbits* is the born-hot, merger-induced channel.
+
+### gastro / joaorun003 (see ../gastro/README.md)
+Second, idealised test with an infalling dwarf. Only the **clumpy+merger** model
+is usable (the not-clumpy snapshot is truncated - corrupt .gz - and needs
+re-fetching), there is no alpha information and only the final snapshot, so this
+side contributes the age/orbit comparison only. The merger is located from the
+snapshot itself at **t=1.5-2.25 Gyr** (retrograde fraction spikes ~7x). Result
+(`gastro_eos_age_kinematics.png`): Eos-like stars have median age 9.3 Gyr vs
+4.3 Gyr for disc orbits, are metal-poorer, and their formation shows **two
+peaks** - an early pre-spin-up one and a distinct merger-induced burst
+(x1.7 over the flanking intervals; 27% of all Eos-like stars are born in the
+merger window).
+
+---
+
+## 5. NEXT
+
+Open threads, in rough priority order:
+
+1. **Re-fetch the not-clumpy gastro snapshot** (and, if possible, the
+   `.FeMassFrac`/`.OxMassFrac` aux arrays, the accreted-pid lists and more than
+   one snapshot). Clumpy vs not-clumpy is the comparison the gastro side exists
+   to make, and right now only one half of it is readable.
+2. **The [Fe/H] scale mismatch** in Au18. Either match on metallicity *rank*
+   rather than absolute [Fe/H], or restrict to the simulation's own metal-poor
+   tail, before concluding anything from the age-at-fixed-[Fe/H] panel.
+3. **Radial dependence** of the Eos-like fraction: everything above is 4<R<30 kpc,
+   whereas the data are solar-neighbourhood.
+
+Earlier open decisions, still unresolved: (a) GS/E-debris purity vs an E-Lz cut;
+(b) whether the in-situ birth-time window should reach earlier than 4 Gyr.
