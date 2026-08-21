@@ -1,19 +1,24 @@
-"""Reproduction of Figure 5 of Borbolato et al. (2026) for the Clumpy+merger model.
+"""Bottom-row reproduction of Borbolato et al. (2026) Figure 5, Clumpy+merger model.
 
-Their Figure 5 has four columns -- Isolated Clumpy (1-2) and Clumpy+merger (3-4),
-each split into low- and high-alpha Splash.  Only the merger runs are available
-here, so this reproduces the Clumpy+merger half:
+Two panels:
+  left   the [O/Fe]-[Fe/H] plane with the high/low-alpha boundary drawn on it,
+         which is the one step of their recipe that has to be inferred rather
+         than read off, so it is shown rather than asserted;
+  right  their Figure 5 bottom row: the evolution of V_phi for the low- and
+         high-alpha Splash against their canonical discs.
 
-  top row     t_form vs R_form, coloured by [Fe/H], with the dwarf's pericentric
-              passages at t = 1.6, 2.5 and 3.2 Gyr marked;
-  bottom row  the evolution of median V_phi for the Splash populations against
-              their canonical discs, same pericentre marks, grey band = the
-              clumpy phase (first 3 Gyr).
-
-Two extra panels carry the selection provenance, since the alpha split is the
-step that has to be inferred rather than read off: the [O/Fe]-[Fe/H] plane with
-the boundary drawn, and the [O/Fe] histogram in their -0.7 < [Fe/H] < -0.2 window
-with the valley and the exclusion gap marked.
+Cuts follow Borbolato et al. Section 3.1-3.2 exactly:
+  * oxygen is the alpha tracer; the split is the valley in the [O/Fe] histogram
+    taken over -0.7 < [Fe/H] < -0.2, with an exclusion gap either side (their
+    "gap between the two populations to avoid regions where they may overlap");
+  * R_GC > 5 kpc, as in their Section 3.2 ("stars at R_GC < 5 kpc are excluded
+    from the analysis").  This is the literal cut, not one rescaled by the disc
+    scale length: it reproduces their Splash fractions, 0.21% of the low-alpha
+    and 8.10% of the high-alpha population here against 0.25% and 8.16% in their
+    APOGEE sample, whereas rescaling by R_d gives 0.43% and 6.73%;
+  * Splash = V_phi < 100 km/s (low-alpha) and V_phi < 50 km/s (high-alpha), the
+    stricter cut for high-alpha because the simulated thick disc is more heated
+    than the Milky Way's.  No eccentricity and no age cut.
 
 Reads out/fig5_clumpy_merger.npz (built by gastro_fig5_prep.py).
 """
@@ -23,6 +28,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from matplotlib.lines import Line2D
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import gastro_config as G
@@ -30,123 +36,108 @@ import gastro_config as G
 os.makedirs(G.FIG_DIR, exist_ok=True)
 d = np.load(G.OUT_DIR + '/fig5_clumpy_merger.npz')
 
-PERI = (1.6, 2.5, 3.2)            # first, second, final pericentric passage (their Sec. 2.2)
+# The dwarf's three pericentric passages (Borbolato et al. Sec. 2.2 and Fig. 5).
+PERI = [(1.6, '1st pericentre'), (2.5, '2nd pericentre'), (3.2, 'dwarf fully disrupted')]
 CLUMPY_PHASE = (0., 3.)
-C_LOW, C_HIGH, C_DISC = '#1a9850', '#e08214', '0.15'
+RMIN = 5.0
+VPHI_LOW, VPHI_HIGH = 100., 50.
 FEH_WINDOW = (-0.7, -0.2)
+BAND = (16, 84)                      # percentile band drawn around each track
+C_LOW, C_HIGH, C_DISC = '#1a9850', '#e08214', '0.15'
 
-ofe, feh = d['ofe'], d['feh']
-tform, Rform, vphi0 = d['tform'], d['Rform'], d['vphi']
-dip, gap, RMIN, Rd = float(d['dip']), float(d['gap']), float(d['RMIN']), float(d['Rd'])
-times, counts = d['times'], d['counts']
-
-# The selection is rebuilt here rather than read from the prep file: the cached
-# per-snapshot kinematics make every cut a plotting-time decision, so the alpha
-# split or the satellite definition can be revised without re-walking the series.
 MODEL_DIR = G.HERE + '/jrun003.dwarfM06XY138Z37Vxy20FB20'
 NAME = 'dwarfM06XY138Z37Vxy20FB20'
+
+ofe, feh, R, vphi0, Rform = d['ofe'], d['feh'], d['R'], d['vphi'], d['Rform']
+dip, gap = float(d['dip']), float(d['gap'])
+times, counts = d['times'], d['counts']
 zform = np.load(f'{MODEL_DIR}/{NAME}_zform.npy')
+
 insitu = ~G.satellite_born(Rform, zform)
-vol = insitu & (d['R'] > RMIN)
+vol = insitu & (R > RMIN)
 low = vol & (ofe < dip - gap)
 high = vol & (ofe > dip + gap)
-sl = low & (vphi0 < G.EOS_VPHI_MAX)
-sh = high & (vphi0 < 50.)
-print(f'satellite-born excluded: {(~insitu).sum():,} stars')
+splash_low = low & (vphi0 < VPHI_LOW)
+splash_high = high & (vphi0 < VPHI_HIGH)
 
-print(f'R_d={Rd:.2f} kpc -> R>{RMIN:.2f} kpc;  alpha split at [O/Fe]={dip:+.3f} +/-{gap}')
-print(f'low-alpha {low.sum():,} -> Splash {sl.sum():,} ({100*sl.sum()/low.sum():.2f}%)')
-print(f'high-alpha {high.sum():,} -> Splash {sh.sum():,} ({100*sh.sum()/high.sum():.2f}%)')
+print(f'R > {RMIN:.0f} kpc, satellite-born excluded ({(~insitu).sum():,} stars); '
+      f'alpha split [O/Fe]={dip:+.3f} +/-{gap}')
+print(f'  low-alpha  {low.sum():>7,} -> Splash {splash_low.sum():>6,} '
+      f'({100*splash_low.sum()/low.sum():.2f}%)   [APOGEE: 0.25%]')
+print(f'  high-alpha {high.sum():>7,} -> Splash {splash_high.sum():>6,} '
+      f'({100*splash_high.sum()/high.sum():.2f}%)   [APOGEE: 8.16%]')
 
 
-def track(mask, stat=np.median):
-    """Reconstruct a population's V_phi history from the cached per-snapshot arrays."""
+def track(mask, nmin=20):
+    """Median V_phi and the percentile band, per snapshot, from the cached arrays."""
     off = np.concatenate([[0], np.cumsum(counts)])
-    out = np.full(len(times), np.nan)
+    med = np.full(len(times), np.nan)
+    lo = np.full(len(times), np.nan)
+    hi = np.full(len(times), np.nan)
     for k, n in enumerate(counts):
         v = d['snap_vphi'][off[k]:off[k] + n][mask[:n]]
-        if len(v) > 50:
-            out[k] = stat(v)
-    return out
+        if len(v) >= nmin:
+            med[k] = np.median(v)
+            lo[k], hi[k] = np.percentile(v, BAND)
+    return med, lo, hi
 
 
-fig, axes = plt.subplots(2, 3, figsize=(19, 10.2))
+fig, (axL, axR) = plt.subplots(1, 2, figsize=(15.5, 6.8))
 
-# --- (a) the alpha plane, with the boundary that defines everything else ------
-ax = axes[0, 0]
-ax.hist2d(feh[vol], ofe[vol], bins=(150, 130), range=((-2.0, 0.8), (-0.45, 0.6)),
-          norm=LogNorm(), cmap='Greys')
-ax.axhspan(dip - gap, dip + gap, color='r', alpha=.25, lw=0)
-ax.axhline(dip, color='r', lw=1.6)
+# ------------------------------------------------- left: the alpha boundary --
+axL.hist2d(feh[vol], ofe[vol], bins=(150, 130), range=((-2.0, 0.8), (-0.45, 0.6)),
+           norm=LogNorm(), cmap='Greys')
+axL.axhspan(dip - gap, dip + gap, color='r', alpha=.22, lw=0)
+axL.axhline(dip, color='r', lw=1.6)
 for v in FEH_WINDOW:
-    ax.axvline(v, color='tab:blue', lw=1.2, ls='--')
-ax.set(xlabel='[Fe/H]', ylabel='[O/Fe]',
-       title=f'(a) $\\alpha$ split at [O/Fe]$={dip:+.2f}$ (red), $\\pm${gap} gap\n'
-             f'dashed = the ${FEH_WINDOW[0]}<$[Fe/H]$<{FEH_WINDOW[1]}$ window')
+    axL.axvline(v, color='tab:blue', lw=1.2, ls='--')
+axL.text(-1.9, dip + gap + .03, 'high-$\\alpha$', color=C_HIGH, fontsize=12, va='bottom')
+axL.text(-1.9, dip - gap - .03, 'low-$\\alpha$', color=C_LOW, fontsize=12, va='top')
+axL.set(xlabel='[Fe/H]', ylabel='[O/Fe]',
+        title=f'$\\alpha$ split at [O/Fe] $= {dip:+.2f}$ (red), $\\pm{gap}$ gap\n'
+              f'dashed: the ${FEH_WINDOW[0]} <$ [Fe/H] $< {FEH_WINDOW[1]}$ window '
+              'the split is measured in')
 
-# --- (d) the histogram the split is read from --------------------------------
-ax = axes[1, 0]
-ax.plot(d['ofe_hist_x'], d['ofe_hist_y'], color='k', lw=1.8)
-ax.axvspan(dip - gap, dip + gap, color='r', alpha=.25, lw=0)
-ax.axvline(dip, color='r', lw=1.6)
-ax.set(xlim=(-0.45, 0.6), xlabel='[O/Fe]', ylabel='stars per bin',
-       title=f'(d) [O/Fe] within ${FEH_WINDOW[0]}<$[Fe/H]$<{FEH_WINDOW[1]}$\n'
-             'split = deepest valley, not a peak-first guess')
-ax.text(dip - gap - .02, ax.get_ylim()[1] * .9, 'low-$\\alpha$', ha='right', color=C_LOW, fontsize=11)
-ax.text(dip + gap + .02, ax.get_ylim()[1] * .9, 'high-$\\alpha$', ha='left', color=C_HIGH, fontsize=11)
+# -------------------------------------- right: Figure 5 bottom row, V_phi(t) --
+axR.axvspan(*CLUMPY_PHASE, color='0.5', alpha=.18, lw=0)
+for m, c, lab in [(low & ~splash_low, C_DISC, 'canonical low-$\\alpha$ disc'),
+                  (high & ~splash_high, C_DISC, 'canonical high-$\\alpha$ disc'),
+                  (splash_low, C_LOW, 'low-$\\alpha$ Splash'),
+                  (splash_high, C_HIGH, 'high-$\\alpha$ Splash')]:
+    med, lo, hi = track(m)
+    ls = '--' if (c == C_DISC and 'high' in lab) else '-'
+    axR.fill_between(times, lo, hi, color=c, alpha=.13, lw=0)
+    axR.plot(times, med, color=c, lw=2.6, ls=ls, label=lab)
 
-# --- (b), (c) t_form vs R_form ------------------------------------------------
-for col, (m, c, name, n_all) in enumerate(
-        [(sl, C_LOW, f'low-$\\alpha$ Splash ($V_\\phi<{G.EOS_VPHI_MAX:.0f}$)', low.sum()),
-         (sh, C_HIGH, f'high-$\\alpha$ Splash ($V_\\phi<50$)', high.sum())], start=1):
-    ax = axes[0, col]
-    sc = ax.scatter(Rform[m], tform[m], c=feh[m], s=3, alpha=.5, lw=0,
-                    cmap='viridis', vmin=-1.2, vmax=0.3)
-    for p in PERI:
-        ax.axhline(p, color='k', lw=1.1, ls='--')
-    ax.axhspan(*CLUMPY_PHASE, color='0.5', alpha=.18, lw=0)
-    ax.set(xlim=(0, 20), ylim=(0, 10), xlabel=r'$R_{\rm form}$ [kpc]',
-           ylabel='$t_{\\rm form}$ [Gyr]' if col == 1 else '',
-           title=f'({"bc"[col-1]}) {name}\nN={m.sum():,} of {n_all:,} '
-                 f'({100*m.sum()/n_all:.1f}%)')
-    plt.colorbar(sc, ax=ax, label='[Fe/H]', pad=.01)
+axR.axhline(VPHI_LOW, color=C_LOW, lw=1.0, ls=':')
+axR.axhline(VPHI_HIGH, color=C_HIGH, lw=1.0, ls=':')
+axR.text(9.85, VPHI_LOW + 4, r'$V_\phi=100$: low-$\alpha$ Splash cut', color=C_LOW,
+         fontsize=8, ha='right')
+axR.text(9.85, VPHI_HIGH - 13, r'$V_\phi=50$: high-$\alpha$ Splash cut', color=C_HIGH,
+         fontsize=8, ha='right')
 
-# --- (e) V_phi evolution ------------------------------------------------------
-ax = axes[1, 1]
-for m, c, lab, ls in [(sl, C_LOW, 'low-$\\alpha$ Splash', '-'),
-                      (sh, C_HIGH, 'high-$\\alpha$ Splash', '-'),
-                      (low & ~sl, C_DISC, 'canonical low-$\\alpha$ disc', '-'),
-                      (high & ~sh, C_DISC, 'canonical high-$\\alpha$ disc', '--')]:
-    ax.plot(times, track(m), color=c, ls=ls, lw=2.2, marker='o', ms=3.5, label=lab)
-for p in PERI:
-    ax.axvline(p, color='k', lw=1.1, ls='--')
-ax.axvspan(*CLUMPY_PHASE, color='0.5', alpha=.18, lw=0, label='clumpy phase')
-ax.set(xlabel='time [Gyr]', ylabel=r'median $V_\phi$ [km s$^{-1}$]',
-       title='(e) $V_\\phi$ evolution of the Splash vs its parent disc')
-ax.legend(fontsize=8.5, loc='center right')
+for t, lab in PERI:
+    axR.axvline(t, color='k', lw=1.2)
+    axR.text(t - .12, 296, lab, rotation=90, ha='right', va='top', fontsize=8.5)
 
-# --- (f) where the Splash cuts fall at z=0 -----------------------------------
-ax = axes[1, 2]
-b = np.linspace(-250, 400, 80)
-ax.hist(vphi0[low], bins=b, density=True, histtype='step', lw=2, color=C_LOW,
-        label=f'low-$\\alpha$ (N={low.sum():,})')
-ax.hist(vphi0[high], bins=b, density=True, histtype='step', lw=2, color=C_HIGH,
-        label=f'high-$\\alpha$ (N={high.sum():,})')
-ax.axvline(G.EOS_VPHI_MAX, color=C_LOW, lw=1.6, ls='--')
-ax.axvline(50, color=C_HIGH, lw=1.6, ls='--')
-ax.set(xlabel=r'$V_\phi$ [km s$^{-1}$]', ylabel='normalised',
-       title='(f) Splash cuts at $z=0$: $V_\\phi<100$ (low-$\\alpha$), $<50$ (high-$\\alpha$)')
-ax.legend(fontsize=8.5)
+axR.set(xlim=(0, 10), ylim=(-50, 300), xlabel='Time [Gyr]',
+        ylabel=r'$V_\phi$ [km s$^{-1}$]')
+handles, labels = axR.get_legend_handles_labels()
+handles.append(Line2D([], [], color='k', lw=1.2))
+labels.append('pericentric passages of the dwarf')
+axR.legend(handles, labels, fontsize=8.5, ncol=3, loc='upper center',
+           bbox_to_anchor=(.5, -.13), frameon=False)
 
-fig.suptitle('Clumpy+merger (GASTRO c.r.c03): reproduction of Borbolato et al. (2026) Figure 5, '
-             f'right-hand half  [in-situ, $R>{RMIN:.1f}$ kpc $=5\\,R_d/R_{{d,\\rm MW}}$]', fontsize=13)
-fig.tight_layout(rect=[0, 0, 1, .955])
+fig.suptitle('Clumpy+merger (GASTRO c.r.c03): Borbolato et al. (2026) Fig. 5 bottom row, '
+             f'$R_{{\\rm GC}}>{RMIN:.0f}$ kpc; shading = {BAND[0]}-{BAND[1]}th percentile',
+             fontsize=12)
+fig.tight_layout(rect=[0, .07, 1, .93])
 out = G.FIG_DIR + '/gastro_fig5_clumpy_merger.png'
-fig.savefig(out, dpi=140)
+fig.savefig(out, dpi=150)
 
-print('\nmedian t_form / R_form:')
-for lab, m in [('low-alpha Splash ', sl), ('high-alpha Splash', sh)]:
-    print(f'  {lab}  t_form={np.median(tform[m]):5.2f} Gyr  R_form={np.median(Rform[m]):5.2f} kpc  '
-          f'[Fe/H]={np.median(feh[m]):+.2f}  born in the clumpy phase: '
-          f'{100*np.mean(tform[m] < CLUMPY_PHASE[1]):.1f}%')
+print('\n  t     splash_low   disc_low   splash_high   disc_high')
+tl, _, _ = track(splash_low); dl, _, _ = track(low & ~splash_low)
+th, _, _ = track(splash_high); dh, _, _ = track(high & ~splash_high)
+for k in range(len(times)):
+    print(f'  {times[k]:4.1f}  {tl[k]:10.1f} {dl[k]:10.1f} {th[k]:13.1f} {dh[k]:11.1f}')
 print('saved', out)

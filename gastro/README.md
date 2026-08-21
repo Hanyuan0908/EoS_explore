@@ -57,9 +57,16 @@ Borbolato et al. (2026) §2.2 give the satellite a "total dark matter... mass of
   small file and would settle it exactly.
 * **Aux abundance arrays exist for the final snapshot only.** Not a problem for
   Fig. 5: populations are selected at z=0 and tracked backwards by array index.
-* **Disc scale length** is measured here (R_d ≈ 1.25 kpc, fit over 3–12 kpc)
-  rather than taken from Table 1 of Amarante et al. (2025). It sets the radial
-  cut, R > 2.4 kpc, that stands in for the observational R_GC > 5 kpc.
+## Radial cut
+
+Borbolato et al. describe two things that read as if they conflict: normalising
+the disc length by each simulation's scale length (§3.2, for Figure 3), and
+excluding stars at R_GC < 5 kpc. Taking the **5 kpc literally** is what
+reproduces their result — it gives Splash fractions of 0.21 % of the low-α and
+8.10 % of the high-α population here, against 0.25 % and 8.16 % in their APOGEE
+sample. Rescaling by the measured scale length instead (R_d ≈ 1.25 kpc, so
+R > 2.4 kpc) gives 0.43 % and 6.73 %, and roughly six times as many low-α Splash
+stars as their Figure 5 shows. So the scripts use `R > 5 kpc`.
 
 ## Cross-snapshot identity
 
