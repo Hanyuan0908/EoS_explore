@@ -86,6 +86,27 @@ disc's rms residual from 22.8 to 16.8 km/s.
 Measuring the [O/Fe] valley independently (deepest minimum over −0.7 < [Fe/H] <
 −0.2) gives −0.155, consistent with their −0.13; the scripts use their value.
 
+## Splash kinematic cut: two versions
+
+`ana_gastro_fig5.py` runs in two modes, writing separate files:
+
+| mode | Splash definition | figure |
+|---|---|---|
+| `paper` (default) | V_φ < 100 (low-α), V_φ < 50 (high-α) — one-sided, their own | `gastro_fig5_clumpy_merger.png` |
+| `symmetric` | −80 < V_φ < +80 for **both** — this project's observational mask (`SPLASH_VTAN_MAX` in `../src/eos/config.py`) | `gastro_fig5_clumpy_merger_vphi80.png` |
+
+The symmetric window drops the retrograde tail a one-sided cut keeps and applies
+one threshold to both populations, so low- and high-α are selected like for like.
+Sample sizes move accordingly: low-α 487 → 323 (losing 80 < V_φ < 100, nothing
+below −80), high-α 4,020 → 6,719 (gaining 50 ≤ V_φ < 80, losing 93 retrograde).
+
+It changes the reading of the figure. Under the paper's cuts the two Splash
+tracks sit ~55 km/s apart after t = 4 Gyr, which looks like two dynamically
+distinct populations; under one common cut they converge to within **11 km/s**
+(mean separation over the whole track 61 → 21 km/s). Most of the apparent
+difference was the selection, not the galaxy — which supports their "common
+dynamical origin" claim on a like-for-like comparison rather than in spite of one.
+
 ## How close the tracks get
 
 Against values read off their published panel, with the full selection above:

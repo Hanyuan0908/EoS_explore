@@ -1,5 +1,10 @@
 """Bottom-row reproduction of Borbolato et al. (2026) Figure 5, Clumpy+merger model.
 
+Run with no argument for the paper's own Splash cuts, or `symmetric` for the
+two-sided |V_phi| < 80 km/s cut this project uses observationally
+(SPLASH_VTAN_MAX in ../src/eos/config.py), applied identically to both alpha
+populations.  The two write to different files, so both stay reproducible.
+
 Two panels:
   left   the [O/Fe]-[Fe/H] plane with the selection drawn on it, so the cuts are
          visible rather than asserted;
@@ -51,7 +56,21 @@ d = np.load(G.OUT_DIR + '/fig5_clumpy_merger.npz')
 OFE_LOW, OFE_HIGH = -0.13, 0.10      # Borbolato et al. Fig. 3, col. 4
 FEH_MIN = -1.0                       # their Sec. 3.1
 RMIN = 5.0                           # their Sec. 3.2
-VPHI_LOW, VPHI_HIGH = 100., 50.      # Splash cuts
+# Splash kinematics.  'paper' is Borbolato et al.'s own one-sided pair; the
+# stricter high-alpha value is theirs, because the simulated thick disc is more
+# heated than the Milky Way's.  'symmetric' instead applies one two-sided window
+# to both populations, matching this project's observational Splash mask
+# (|V_tan| < 80 km/s); it drops the retrograde tail that a one-sided cut keeps
+# and makes the low- and high-alpha selections directly comparable.
+MODE = 'symmetric' if 'symmetric' in sys.argv[1:] else 'paper'
+if MODE == 'paper':
+    VPHI_LOW, VPHI_HIGH = 100., 50.
+    SPLASH = lambda v, lim: v < lim
+    SUFFIX, CUTLAB = '', '$V_\\phi<100$ (low-$\\alpha$), $<50$ (high-$\\alpha$)'
+else:
+    VPHI_LOW = VPHI_HIGH = 80.
+    SPLASH = lambda v, lim: np.abs(v) < lim
+    SUFFIX, CUTLAB = '_vphi80', '$|V_\\phi|<80$ for both'
 FEH_WINDOW = (-0.7, -0.2)            # window the split is measured in
 TFORM_MAX = 4.0                      # their Fig. 3 low-alpha sample; affects the disc only
 NMIN = 15                            # a track point needs at least this many stars
@@ -72,8 +91,8 @@ insitu = ~G.satellite_born(Rform, zform)
 vol = insitu & (R > RMIN) & (feh > FEH_MIN) & (d['tform'] < TFORM_MAX)
 low = vol & (ofe < OFE_LOW)
 high = vol & (ofe > OFE_HIGH)
-splash_low = low & (vphi0 < VPHI_LOW)
-splash_high = high & (vphi0 < VPHI_HIGH)
+splash_low = low & SPLASH(vphi0, VPHI_LOW)
+splash_high = high & SPLASH(vphi0, VPHI_HIGH)
 
 print(f'R > {RMIN:.0f} kpc, [Fe/H] > {FEH_MIN}, t_form < {TFORM_MAX} Gyr, '
       f'satellite-born excluded ({(~insitu).sum():,})')
@@ -82,8 +101,11 @@ print(f'R > {RMIN:.0f} kpc, [Fe/H] > {FEH_MIN}, t_form < {TFORM_MAX} Gyr, '
 allage = insitu & (R > RMIN) & (feh > FEH_MIN)
 for lab, sel, sp, ref in [('low-alpha ', allage & (ofe < OFE_LOW), splash_low, 0.25),
                           ('high-alpha', allage & (ofe > OFE_HIGH), splash_high, 8.16)]:
+    # The APOGEE reference fractions were measured with the paper's own cuts, so
+    # they are only a like-for-like comparison in 'paper' mode.
+    tail = f'   [their APOGEE: {ref}%]' if MODE == 'paper' else ''
     print(f'  {lab} {sel.sum():>7,} -> Splash {sp.sum():>6,} '
-          f'({100*sp.sum()/sel.sum():.2f}%)   [their APOGEE: {ref}%]')
+          f'({100*sp.sum()/sel.sum():.2f}%){tail}')
 
 
 def track(mask):
@@ -137,12 +159,19 @@ for m, c, lab, ls in [(low & ~splash_low, C_DISC, 'canonical low-$\\alpha$ disc'
     axR.fill_between(times, lo, hi, color=c, alpha=.13, lw=0)
     axR.plot(times, med, color=c, lw=2.6, ls=ls, label=lab)
 
-axR.axhline(VPHI_LOW, color=C_LOW, lw=1.0, ls=':')
-axR.axhline(VPHI_HIGH, color=C_HIGH, lw=1.0, ls=':')
-axR.text(9.85, VPHI_LOW + 5, r'$V_\phi=100$: low-$\alpha$ Splash cut', color=C_LOW,
-         fontsize=8, ha='right')
-axR.text(9.85, VPHI_HIGH - 14, r'$V_\phi=50$: high-$\alpha$ Splash cut', color=C_HIGH,
-         fontsize=8, ha='right')
+if MODE == 'paper':
+    axR.axhline(VPHI_LOW, color=C_LOW, lw=1.0, ls=':')
+    axR.axhline(VPHI_HIGH, color=C_HIGH, lw=1.0, ls=':')
+    axR.text(9.85, VPHI_LOW + 5, r'$V_\phi=100$: low-$\alpha$ Splash cut', color=C_LOW,
+             fontsize=8, ha='right')
+    axR.text(9.85, VPHI_HIGH - 14, r'$V_\phi=50$: high-$\alpha$ Splash cut', color=C_HIGH,
+             fontsize=8, ha='right')
+else:
+    axR.axhspan(-VPHI_LOW, VPHI_LOW, color='0.35', alpha=.10, lw=0)
+    for y in (-VPHI_LOW, VPHI_LOW):
+        axR.axhline(y, color='0.35', lw=1.0, ls=':')
+    axR.text(9.85, VPHI_LOW + 5, r'$|V_\phi|<80$: Splash window, both populations',
+             color='0.25', fontsize=8, ha='right')
 for t, lab in PERI:
     axR.axvline(t, color='k', lw=1.2)
     axR.text(t - .12, 296, lab, rotation=90, ha='right', va='top', fontsize=8.5)
@@ -154,17 +183,18 @@ labels.append('pericentric passages of the dwarf')
 axR.legend(handles, labels, fontsize=8.5, ncol=3, loc='upper center',
            bbox_to_anchor=(.5, -.13), frameon=False)
 
-fig.suptitle('Clumpy+merger (GASTRO c.r.c03): Borbolato et al. (2026) Fig. 5 bottom row  '
-             f'[in-situ, $R_{{\\rm GC}}>{RMIN:.0f}$ kpc, [Fe/H]$>{FEH_MIN}$, $t_{{\\rm form}}<{TFORM_MAX:.0f}$ Gyr; '
-             f'shading = {BAND[0]}-{BAND[1]}th percentile]', fontsize=12)
+fig.suptitle('Clumpy+merger (GASTRO c.r.c03): Borbolato et al. (2026) Fig. 5 bottom row, '
+             f'Splash = {CUTLAB}\n'
+             f'[in-situ, $R_{{\\rm GC}}>{RMIN:.0f}$ kpc, [Fe/H]$>{FEH_MIN}$, '
+             f'$t_{{\\rm form}}<{TFORM_MAX:.0f}$ Gyr; shading = {BAND[0]}-{BAND[1]}th percentile]',
+             fontsize=12)
 fig.tight_layout(rect=[0, .07, 1, .93])
-out = G.FIG_DIR + '/gastro_fig5_clumpy_merger.png'
+out = G.FIG_DIR + f'/gastro_fig5_clumpy_merger{SUFFIX}.png'
 fig.savefig(out, dpi=150)
 
 gl, _, _ = track(splash_low); dl, _, _ = track(low & ~splash_low)
 gh, _, _ = track(splash_high); dh, _, _ = track(high & ~splash_high)
-print('\n  t    low-a Splash  low-a disc | high-a Splash  high-a disc'
-      '     (their Fig. 5, read off: green 185 at t=1, black 182)')
+print(f'\n  t    low-a Splash  low-a disc | high-a Splash  high-a disc   [{MODE} cuts]')
 for k in range(len(times)):
     print(f'  {times[k]:4.1f}  {gl[k]:12.1f} {dl[k]:11.1f} | {gh[k]:13.1f} {dh[k]:12.1f}')
 print('saved', out)
