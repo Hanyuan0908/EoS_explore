@@ -113,10 +113,14 @@ for y in (OFE_LOW, OFE_HIGH):
     axL.axhline(y, color='#b2182b', lw=1.4, ls='--')
 for x in FEH_WINDOW:
     axL.axvline(x, color='k', lw=1.0)
-# Parked at the metal-rich edge, well inside each region but clear of the
-# density map, which thins out beyond [Fe/H] ~ 0.2.
-for y, lab, c in [(0.33, r'high-$\alpha$', C_HIGH), (-0.37, r'low-$\alpha$', C_LOW)]:
-    axL.text(0.72, y, lab, color=c, fontsize=19, ha='right', va='center')
+# Hugging the boundaries so each label reads against its own dashed line, but
+# pushed to the metal-rich edge where the density map has thinned out.
+for y, lab, c, va in [(OFE_HIGH + .04, r'high-$\alpha$', C_HIGH, 'bottom'),
+                      (OFE_LOW - .04, r'low-$\alpha$', C_LOW, 'top')]:
+    axL.text(0.72, y, lab, color=c, fontsize=19, ha='right', va=va)
+# The cuts that shape the sample but are not otherwise visible in the panel.
+axL.text(.975, .035, r'$R_{\rm GC}>5$ kpc,  $t_{\rm form}<4$ Gyr,  [Fe/H] $>-1$',
+         transform=axL.transAxes, ha='right', fontsize=10.5, color='.35')
 axL.set(xlim=(FEH_MIN, 0.75), ylim=(-0.45, 0.6), xlabel='[Fe/H]', ylabel='[O/Fe]')
 
 # ------------------------------------------------ right: V_phi against time ---
