@@ -32,6 +32,16 @@ import gastro_config as G
 MODEL_DIR = G.HERE + '/jrun003.dwarfM06XY138Z37Vxy20FB20'
 NAME = 'dwarfM06XY138Z37Vxy20FB20'
 T_COLD, T_COOL = 3e4, 1e4
+# Star-formation criteria.  The run's own .param is not available, so GASOLINE's
+# thresholds cannot be read off directly; these are the two standard choices and
+# they bracket it.  AGERTZ is the VINTERGATAN definition (Agertz et al. 2021,
+# their Fig. 6): T < 1e4 K and n_H > 1 cm^-3.  GASOLINE_STD is the code's usual
+# pair, T < 1.5e4 K and n_H > 0.1 cm^-3.  The gas here reaches n_H ~ 80 cm^-3, so
+# both are well resolved -- unlike Auriga, where star-forming gas sits at
+# n_H ~ 0.1-0.5 and an n > 1 cut would select only the nucleus.
+T_AGERTZ, N_AGERTZ = 1e4, 1.0
+T_GASOLINE, N_GASOLINE = 1.5e4, 0.1
+MSUN, KPC, XH, MP = 1.989e33, 3.0857e21, 0.76, 1.6726219e-24
 RMAX, ZMAX = 30., 3.
 VPHI_COROT = 50.
 os.makedirs(G.OUT_DIR, exist_ok=True)
@@ -50,7 +60,9 @@ files = [x for x in files if not any(k in x for k in ('MassFrac', 'iord', 'timef
 
 rec = {k: [] for k in ('time', 'rhalf_cold', 'rhalf_cool', 'rhalf_corot', 'rhalf_star',
                        'r90_cold', 'm_cold', 'm_cool', 'm_star', 'm_cold_outside',
-                       'vphi_cold', 'zabs_cold')}
+                       'vphi_cold', 'zabs_cold',
+                       'rhalf_agertz', 'm_agertz', 'r90_agertz',
+                       'rhalf_gasoline', 'm_gasoline')}
 for path in files:
     f = pynbody.load(path)
     f.physical_units()
@@ -59,6 +71,7 @@ for path in files:
     gp = np.asarray(f.g['pos'], float)
     gm = np.asarray(f.g['mass'], float)
     T = np.asarray(f.g['temp'], float)
+    nH = np.asarray(f.g['rho'], float) * MSUN / KPC ** 3 * XH / MP
     gv = np.asarray(f.g['vel'], float)
     Rg = np.hypot(gp[:, 0], gp[:, 1])
     zg = gp[:, 2]
@@ -81,6 +94,8 @@ for path in files:
     cold = ap & (T < T_COLD)
     cool = ap & (T < T_COOL)
     corot = cold & (vphi > VPHI_COROT)
+    agertz = ap & (T < T_AGERTZ) & (nH > N_AGERTZ)
+    gasoline = ap & (T < T_GASOLINE) & (nH > N_GASOLINE)
     star = (Rs < RMAX) & (np.abs(zs) < ZMAX)
 
     rec['time'].append(float(f.properties['time']))
@@ -94,9 +109,15 @@ for path in files:
     rec['m_star'].append(sm[star].sum())
     rec['m_cold_outside'].append(gm[(T < T_COLD) & ~ap].sum())
     rec['vphi_cold'].append(float(np.median(vphi[cold])) if cold.sum() > 20 else np.nan)
+    rec['rhalf_agertz'].append(half_mass(Rg[agertz], gm[agertz]))
+    rec['r90_agertz'].append(half_mass(Rg[agertz], gm[agertz], .9))
+    rec['m_agertz'].append(gm[agertz].sum())
+    rec['rhalf_gasoline'].append(half_mass(Rg[gasoline], gm[gasoline]))
+    rec['m_gasoline'].append(gm[gasoline].sum())
     rec['zabs_cold'].append(float(np.median(np.abs(zg[cold]))) if cold.sum() > 20 else np.nan)
     print(f"  t={rec['time'][-1]:5.2f}  R_half(cold)={rec['rhalf_cold'][-1]:6.2f} kpc  "
-          f"M_cold={rec['m_cold'][-1]:.2e}  R_half(*)={rec['rhalf_star'][-1]:5.2f}", flush=True)
+          f"R_half(SF,Agertz)={rec['rhalf_agertz'][-1]:6.2f}  "
+          f"M_SF={rec['m_agertz'][-1]:.2e}", flush=True)
     del f
 
 # Star formation history, straight from the birth times in the final snapshot.

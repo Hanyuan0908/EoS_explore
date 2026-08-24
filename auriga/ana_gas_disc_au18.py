@@ -34,13 +34,16 @@ def events(ax, label=True):
 fig, axes = plt.subplots(2, 2, figsize=(13.5, 9))
 
 ax = axes[0, 0]
-# Primary = the whole gas disc (cold or star-forming).  Inside this aperture only
-# ~5% of the gas is hot, so this is within 0.3% of taking every gas cell; the
-# SF-only curve is shown too because it is a third of the mass and sits well
-# inside, tracing the star-forming disc rather than the gas disc.
-ax.plot(t, d['rhalf_coldsf'], 'o-', color=CG, lw=2.2, ms=4, label='gas disc (cold or star-forming)')
-ax.plot(t, d['rhalf_sf'], 'o-', color='#66a0c8', lw=1.6, ms=3, label='star-forming gas only')
-ax.plot(t, d['r90_sf'], 's--', color='#66a0c8', lw=1.1, ms=2.5, alpha=.6, label='star-forming gas, $R_{90}$')
+# Primary = star-forming gas, using Auriga's OWN criterion: the code's
+# StarFormationRate flag, which corresponds to a measured density threshold of
+# n_H = 0.107 cm^-3 (published value 0.11-0.13).  A fixed (T, n) cut cannot be
+# transferred here from another code: Auriga's SF gas sits at n_H ~ 0.1-0.5
+# cm^-3, so the VINTERGATAN criterion n_H > 1 would select only the nucleus
+# (R_half = 0.73 kpc at z=0).  The full gas disc is kept as a second curve.
+ax.plot(t, d['rhalf_sf'], 'o-', color=CG, lw=2.2, ms=4,
+        label='star-forming gas (Auriga criterion, $n_H>0.107$)')
+ax.plot(t, d['r90_sf'], 's--', color=CG, lw=1.1, ms=2.5, alpha=.6, label='star-forming gas, $R_{90}$')
+ax.plot(t, d['rhalf_coldsf'], 'o-', color='#66a0c8', lw=1.6, ms=3, label='all disc gas (cold or SF)')
 ax.plot(t, d['rhalf_star'], 'o-', color=CS, lw=2.2, ms=4, label='stars')
 ax.set(xlabel='cosmic time [Gyr]', ylabel='half-mass radius [kpc]', xlim=(0, 14))
 ax.set_title('(a) Disc size against time')
