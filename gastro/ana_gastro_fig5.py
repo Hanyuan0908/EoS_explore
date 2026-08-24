@@ -25,7 +25,11 @@ Every cut is taken from the paper rather than inferred:
     disc scale length: it reproduces their Splash fractions.
   * Splash = V_phi < 100 km/s (low-alpha), V_phi < 50 km/s (high-alpha), the
     stricter cut for high-alpha because the simulated thick disc is more heated
-    than the Milky Way's.  No eccentricity cut and no age cut.
+    than the Milky Way's.  No eccentricity cut.
+  * **t_form < 4 Gyr**, the low-alpha sample definition printed on their Figure 3.
+    It only touches the canonical disc -- every Splash star here is older than
+    that already -- and it is what brings the disc track to 241 km/s at t = 10 Gyr
+    against the 240 read off their figure (264 without it).
 
 Reads out/fig5_clumpy_merger.npz (built by gastro_fig5_prep.py).
 """
@@ -49,6 +53,7 @@ FEH_MIN = -1.0                       # their Sec. 3.1
 RMIN = 5.0                           # their Sec. 3.2
 VPHI_LOW, VPHI_HIGH = 100., 50.      # Splash cuts
 FEH_WINDOW = (-0.7, -0.2)            # window the split is measured in
+TFORM_MAX = 4.0                      # their Fig. 3 low-alpha sample; affects the disc only
 NMIN = 15                            # a track point needs at least this many stars
 BAND = (16, 84)
 # The dwarf's three pericentric passages (their Sec. 2.2 and Fig. 5).
@@ -64,17 +69,21 @@ times, counts = d['times'], d['counts']
 zform = np.load(f'{MODEL_DIR}/{NAME}_zform.npy')
 
 insitu = ~G.satellite_born(Rform, zform)
-vol = insitu & (R > RMIN) & (feh > FEH_MIN)
+vol = insitu & (R > RMIN) & (feh > FEH_MIN) & (d['tform'] < TFORM_MAX)
 low = vol & (ofe < OFE_LOW)
 high = vol & (ofe > OFE_HIGH)
 splash_low = low & (vphi0 < VPHI_LOW)
 splash_high = high & (vphi0 < VPHI_HIGH)
 
-print(f'R > {RMIN:.0f} kpc, [Fe/H] > {FEH_MIN}, satellite-born excluded ({(~insitu).sum():,})')
-print(f'  low-alpha  ([O/Fe] < {OFE_LOW})  {low.sum():>7,} -> Splash {splash_low.sum():>6,} '
-      f'({100*splash_low.sum()/low.sum():.2f}%)   [their APOGEE: 0.25%]')
-print(f'  high-alpha ([O/Fe] > {OFE_HIGH})  {high.sum():>7,} -> Splash {splash_high.sum():>6,} '
-      f'({100*splash_high.sum()/high.sum():.2f}%)   [their APOGEE: 8.16%]')
+print(f'R > {RMIN:.0f} kpc, [Fe/H] > {FEH_MIN}, t_form < {TFORM_MAX} Gyr, '
+      f'satellite-born excluded ({(~insitu).sum():,})')
+# Splash fractions are quoted against the full-age parent population: the
+# t_form cut shapes the disc track, it is not part of defining the Splash.
+allage = insitu & (R > RMIN) & (feh > FEH_MIN)
+for lab, sel, sp, ref in [('low-alpha ', allage & (ofe < OFE_LOW), splash_low, 0.25),
+                          ('high-alpha', allage & (ofe > OFE_HIGH), splash_high, 8.16)]:
+    print(f'  {lab} {sel.sum():>7,} -> Splash {sp.sum():>6,} '
+          f'({100*sp.sum()/sel.sum():.2f}%)   [their APOGEE: {ref}%]')
 
 
 def track(mask):
@@ -115,6 +124,8 @@ axL.text(FEH_MIN + .03, .55, '[Fe/H] $>-1.0$', color='tab:blue', fontsize=9, rot
 axL.set(xlabel='[Fe/H]', ylabel='[O/Fe]',
         title='Selection: $\\alpha$ boundaries from their Fig. 3 (dashed, gap shaded)\n'
               'solid black = the $-0.7<$ [Fe/H] $<-0.2$ window; dotted = the [Fe/H] floor')
+axL.text(.98, .03, f'also: $R_{{\\rm GC}}>{RMIN:.0f}$ kpc, $t_{{\\rm form}}<{TFORM_MAX:.0f}$ Gyr',
+         transform=axL.transAxes, ha='right', fontsize=8.5, color='.25')
 
 # -------------------------------------- right: Figure 5 bottom row, V_phi(t) --
 axR.axvspan(*CLUMPY_PHASE, color='0.5', alpha=.18, lw=0)
@@ -144,7 +155,7 @@ axR.legend(handles, labels, fontsize=8.5, ncol=3, loc='upper center',
            bbox_to_anchor=(.5, -.13), frameon=False)
 
 fig.suptitle('Clumpy+merger (GASTRO c.r.c03): Borbolato et al. (2026) Fig. 5 bottom row  '
-             f'[in-situ, $R_{{\\rm GC}}>{RMIN:.0f}$ kpc, [Fe/H]$>{FEH_MIN}$; '
+             f'[in-situ, $R_{{\\rm GC}}>{RMIN:.0f}$ kpc, [Fe/H]$>{FEH_MIN}$, $t_{{\\rm form}}<{TFORM_MAX:.0f}$ Gyr; '
              f'shading = {BAND[0]}-{BAND[1]}th percentile]', fontsize=12)
 fig.tight_layout(rect=[0, .07, 1, .93])
 out = G.FIG_DIR + '/gastro_fig5_clumpy_merger.png'

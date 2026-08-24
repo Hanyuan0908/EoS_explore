@@ -66,7 +66,8 @@ Borbolato et al. (2026) §2.2 give the satellite a "total dark matter... mass of
 | high-α | [O/Fe] > +0.10 | same; the span between is their exclusion "gap" |
 | metallicity floor | **[Fe/H] > −1.0** | their §3.1 |
 | volume | R_GC > 5 kpc | their §3.2 |
-| Splash | V_φ < 100 (low-α), V_φ < 50 (high-α) | their §3.2; no eccentricity, no age cut |
+| Splash | V_φ < 100 (low-α), V_φ < 50 (high-α) | their §3.2; no eccentricity cut |
+| formation time | t_form < 4 Gyr | printed on their Fig. 3 |
 
 The **[Fe/H] > −1.0 floor matters far more than it looks**. Without it the low-α
 sample picks up a metal-poor tail ([Fe/H] ≈ −1.2) that is chemically odd rather
@@ -77,8 +78,36 @@ that the Splash and disc curves no longer meet at t = 1 Gyr as they do in the
 published figure. With the floor applied the disc track reads 184 km/s at
 t = 1 Gyr against the 182 read off their figure.
 
+The **t_form < 4 Gyr cut touches only the canonical disc** — every Splash star
+here is older than that already. It brings the disc track to 241 km/s at
+t = 10 Gyr against the 240 read off their figure (264 without it), and cuts the
+disc's rms residual from 22.8 to 16.8 km/s.
+
 Measuring the [O/Fe] valley independently (deepest minimum over −0.7 < [Fe/H] <
 −0.2) gives −0.155, consistent with their −0.13; the scripts use their value.
+
+## How close the tracks get
+
+Against values read off their published panel, with the full selection above:
+
+| | t=1 | t=1.5 | t=2 | t=2.5 | t=3.5 | t=9.5 |
+|---|---|---|---|---|---|---|
+| Splash, here | 156 | 142 | 118 | 117 | 73 | 82 |
+| Splash, paper | 185 | 150 | 140 | 143 | 85 | 85 |
+| disc, here | 184 | 185 | 195 | 210 | 224 | 261 |
+| disc, paper | 182 | 190 | 200 | 207 | 211 | 243 |
+
+The **t = 1 Gyr point rests on 30 stars**; bootstrapping its median gives a 95 %
+interval of [134, 190], which contains their 185. That point is small-number
+noise, not a systematic error.
+
+What remains is a genuine mild systematic from t = 2 onward: the Splash track
+runs ~11 km/s slow and the disc ~12 km/s fast, i.e. this measurement separates
+the two populations slightly more than theirs does. Median is the best-matching
+statistic (rms 14.4 km/s for the Splash, against 16.6 for the mean and 17.4 for a
+Gaussian-fit centre), so the residual is not a choice of statistic. The most
+likely cause is a small difference in the [O/Fe] calibration, which is drawn in
+their Fig. 3 but never quoted numerically.
 
 ## Radial cut
 
