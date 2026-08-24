@@ -57,6 +57,29 @@ Borbolato et al. (2026) §2.2 give the satellite a "total dark matter... mass of
   small file and would settle it exactly.
 * **Aux abundance arrays exist for the final snapshot only.** Not a problem for
   Fig. 5: populations are selected at z=0 and tracked backwards by array index.
+## Selection cuts (all taken from the paper, not inferred)
+
+| cut | value | source |
+|---|---|---|
+| α tracer | oxygen, [O/Fe] | their footnote 5 |
+| low-α | [O/Fe] < −0.13 | printed in their Fig. 3, col. 4 |
+| high-α | [O/Fe] > +0.10 | same; the span between is their exclusion "gap" |
+| metallicity floor | **[Fe/H] > −1.0** | their §3.1 |
+| volume | R_GC > 5 kpc | their §3.2 |
+| Splash | V_φ < 100 (low-α), V_φ < 50 (high-α) | their §3.2; no eccentricity, no age cut |
+
+The **[Fe/H] > −1.0 floor matters far more than it looks**. Without it the low-α
+sample picks up a metal-poor tail ([Fe/H] ≈ −1.2) that is chemically odd rather
+than disc-like: among stars born before t = 1 Gyr these are 1.7 % of their birth
+cohort and sit at [O/Fe] = −0.29 while the cohort sits at +0.28. They are already
+dynamically hot, and they drag the early Splash track down by ~25 km/s — enough
+that the Splash and disc curves no longer meet at t = 1 Gyr as they do in the
+published figure. With the floor applied the disc track reads 184 km/s at
+t = 1 Gyr against the 182 read off their figure.
+
+Measuring the [O/Fe] valley independently (deepest minimum over −0.7 < [Fe/H] <
+−0.2) gives −0.155, consistent with their −0.13; the scripts use their value.
+
 ## Radial cut
 
 Borbolato et al. describe two things that read as if they conflict: normalising
