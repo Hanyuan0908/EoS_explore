@@ -113,8 +113,9 @@ for y in (OFE_LOW, OFE_HIGH):
     axL.axhline(y, color='#b2182b', lw=1.4, ls='--')
 for x in FEH_WINDOW:
     axL.axvline(x, color='k', lw=1.0)
-axL.text(-0.97, OFE_HIGH + .035, r'high-$\alpha$', color=C_HIGH, fontsize=14, va='bottom')
-axL.text(-0.97, OFE_LOW - .035, r'low-$\alpha$', color=C_LOW, fontsize=14, va='top')
+for y, lab, c, va in [(OFE_HIGH + .04, r'high-$\alpha$', C_HIGH, 'bottom'),
+                      (OFE_LOW - .04, r'low-$\alpha$', C_LOW, 'top')]:
+    axL.text(-0.96, y, lab, color=c, fontsize=19, fontweight='bold', va=va)
 axL.set(xlim=(FEH_MIN, 0.75), ylim=(-0.45, 0.6), xlabel='[Fe/H]', ylabel='[O/Fe]')
 
 # ------------------------------------------------ right: V_phi against time ---
