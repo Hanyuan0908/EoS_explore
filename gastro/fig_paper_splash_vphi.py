@@ -61,7 +61,9 @@ OFE_LOW, OFE_HIGH = -0.13, 0.10      # Borbolato et al. Fig. 3, col. 4
 FEH_MIN = -1.0                       # their Sec. 3.1
 RMIN = 5.0                           # their Sec. 3.2
 TFORM_MAX = 4.0                      # their Fig. 3 low-alpha sample; disc only
-FEH_WINDOW = (-0.7, -0.2)            # window the alpha split is measured in
+# The alpha boundaries below were located from the [O/Fe] histogram taken over
+# -0.7 < [Fe/H] < -0.2, but that window plays no part in the selection: it is
+# applied across the full metallicity range, so it is not drawn on the panel.
 NMIN, BAND = 15, (16, 84)
 PERI = [(1.6, '1st pericentre'), (2.5, '2nd pericentre'), (3.2, 'dwarf disrupted')]
 C_LOW, C_HIGH, C_DISC = '#1a9850', '#e08214', '0.15'
@@ -111,8 +113,6 @@ axL.hist2d(feh[shown], ofe[shown], bins=(130, 120),
            rasterized=True)
 for y in (OFE_LOW, OFE_HIGH):
     axL.axhline(y, color='#b2182b', lw=1.4, ls='--')
-for x in FEH_WINDOW:
-    axL.axvline(x, color='k', lw=1.0)
 # Hugging the boundaries so each label reads against its own dashed line, but
 # pushed to the metal-rich edge where the density map has thinned out.
 for y, lab, c, va in [(OFE_HIGH + .04, r'high-$\alpha$', C_HIGH, 'bottom'),
