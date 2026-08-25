@@ -35,13 +35,17 @@ fig, axes = plt.subplots(2, 2, figsize=(13.5, 9))
 
 ax = axes[0, 0]
 # Primary = star-forming gas, using Auriga's OWN criterion: the code's
-# StarFormationRate flag, which corresponds to a measured density threshold of
-# n_H = 0.107 cm^-3 (published value 0.11-0.13).  A fixed (T, n) cut cannot be
-# transferred here from another code: Auriga's SF gas sits at n_H ~ 0.1-0.5
-# cm^-3, so the VINTERGATAN criterion n_H > 1 would select only the nucleus
+# StarFormationRate flag.  Grand et al. (2017) give the threshold as a hydrogen
+# number density n_H = 0.13 cm^-3, with a 2.2 Gyr star formation timescale and
+# the Springel & Hernquist effective equation of state; measuring the minimum
+# density of SF-flagged cells here returns 0.107 cm^-3, ~20% lower, consistent
+# once the fixed X_H = 0.76 assumed in that estimate is allowed for.
+# A fixed (T, n) cut cannot be carried over from another code.  GASTRO and
+# VINTERGATAN both require n > 1 cm^-3, eight times Auriga's threshold, and
+# Auriga's SF gas sits at n_H ~ 0.1-0.5, so n > 1 selects only the nucleus here
 # (R_half = 0.73 kpc at z=0).  The full gas disc is kept as a second curve.
 ax.plot(t, d['rhalf_sf'], 'o-', color=CG, lw=2.2, ms=4,
-        label='star-forming gas (Auriga criterion, $n_H>0.107$)')
+        label=r'star-forming gas (Auriga criterion, $n_H>0.13$ cm$^{-3}$)')
 ax.plot(t, d['r90_sf'], 's--', color=CG, lw=1.1, ms=2.5, alpha=.6, label='star-forming gas, $R_{90}$')
 ax.plot(t, d['rhalf_coldsf'], 'o-', color='#66a0c8', lw=1.6, ms=3, label='all disc gas (cold or SF)')
 ax.plot(t, d['rhalf_star'], 'o-', color=CS, lw=2.2, ms=4, label='stars')
