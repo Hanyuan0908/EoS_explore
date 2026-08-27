@@ -6,8 +6,10 @@ falls from 209 to 201 km/s between birth and z=0, and the Eos-like population is
 invisible under the disc.  Here the same stars are shown with the pieces we have
 since derived overlaid, so the interesting population can actually be seen:
 
-  * the observational Eos box (|v_phi| < 100 km/s), the same cut used in
-    ana_eos_age_kinematics.py;
+  * the observational Eos box, -80 < v_phi < +80 km/s -- this project's own
+    symmetric Splash/Eos window (SPLASH_VTAN_MAX in ../src/eos/config.py), the
+    same one used for the symmetric variant of the Fig. 5 reproduction, rather
+    than the looser |v_phi| < 100 used in ana_eos_age_kinematics.py;
   * the GS/E debris, which is the accreted comparison;
   * contours of the merger-born stars that END UP inside the Eos box, drawn on
     the BIRTH plane -- this is the born-hot versus heated question in one panel.
@@ -22,13 +24,12 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
-from matplotlib.patches import Rectangle
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import orbit_tools as OT
 import config_au18 as C
 
 os.makedirs(C.FIG_DIR, exist_ok=True)
-VPHI_MAX, ECC_MIN = 100., 0.6
+VPHI_MAX, ECC_MIN = 80., 0.6      # symmetric window: -80 < v_phi < +80 km/s
 RNG = [[-350, 350], [-300, 400]]
 C_EOS, C_GSE = '#b2182b', '#1b7837'
 
@@ -48,17 +49,13 @@ ecc, tform, feh = cat['ecc'][ix], cat['tform'][ix], cat['feh'][ix]
 eos = (np.abs(zvphi) < VPHI_MAX) & (ecc > ECC_MIN)
 print(f'merger-born stars matched at z=0: {len(bvR):,} '
       f'(t_form {tform.min():.2f}-{tform.max():.2f} Gyr)')
-print(f'  of these, Eos-like at z=0 (|v_phi|<{VPHI_MAX:.0f}, ecc>{ECC_MIN}): '
+print(f'  of these, Eos-like at z=0 ({-VPHI_MAX:.0f}<v_phi<{VPHI_MAX:.0f}, ecc>{ECC_MIN}): '
       f'{eos.sum():,} ({100*eos.mean():.2f}%)')
 print(f'  their v_phi at birth: median {np.median(bvphi[eos]):.1f} km/s '
       f'(whole sample {np.median(bvphi):.1f})')
 
 g_ok = np.isfinite(cat['gse_vphi'])
 fig, axes = plt.subplots(1, 3, figsize=(19.5, 5.9))
-
-
-def box(ax):
-    ax.add_patch(Rectangle((-VPHI_MAX, RNG[0][0]), 2 * VPHI_MAX, 0, fill=False))
 
 
 for ax, (x, y, title) in zip(axes[:2], [
@@ -96,7 +93,7 @@ ax.legend(fontsize=9, loc='upper left')
 
 fig.suptitle('Au18: $v_R$-$v_\\phi$ of the in-situ stars formed during the GS/E merger '
              f'($t_{{\\rm form}}={tform.min():.1f}$-{tform.max():.1f} Gyr); '
-             f'shaded band = the $|v_\\phi|<{VPHI_MAX:.0f}$ km/s Eos cut', fontsize=13)
+             f'shaded band = the ${-VPHI_MAX:.0f}<v_\\phi<{VPHI_MAX:.0f}$ km/s Eos cut', fontsize=13)
 fig.tight_layout(rect=[0, 0, 1, .93])
 out = C.FIG_DIR + '/au18_merger_vr_vphi.png'
 fig.savefig(out, dpi=145)
