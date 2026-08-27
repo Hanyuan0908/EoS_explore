@@ -13,6 +13,7 @@ Both are drawn from the in-situ stars formed during the merger window
 (t_form = 4.99-6.54 Gyr) that satisfy the observational Eos cut at z=0,
 -80 < v_phi < +80 km/s and ecc > 0.6.
 """
+import os
 import numpy as np
 import config_au18 as C
 
@@ -44,6 +45,22 @@ def load():
         col = np.full(len(d['ids']), np.nan)
         col[okb] = br[key][ixb]
         d[key] = col
+
+    # Guiding-centre radius at birth, if it has been computed (prep_rg_birth.py).
+    # R_g is the radius of the circular orbit carrying the same L_z, so unlike
+    # R_birth it does not depend on where in its orbit a star was caught.
+    rgp = C.OUT_DIR + '/merger_rg_birth.npz'
+    if os.path.exists(rgp):
+        rg = np.load(rgp)
+        og = np.argsort(rg['ids']); gids = rg['ids'][og]
+        pg = np.searchsorted(gids, d['ids'])
+        okg = (pg < len(gids)) & (gids[np.minimum(pg, len(gids) - 1)] == d['ids'])
+        ixg = og[pg[okg]]
+        for key in ('Rg_birth', 'Lz_birth', 'retrograde'):
+            col = np.full(len(d['ids']), np.nan)
+            col[okg] = rg[key][ixg]
+            d[key] = col
+        d['retrograde'] = d['retrograde'] > 0.5
     for key in ('ecc', 'age', 'tform', 'feh', 'r', 'R', 'z', 'rapo', 'eps',
                 'cfe', 'nfe', 'ofe', 'nefe', 'mgfe', 'sife'):
         d[key] = cat[key][ix]
