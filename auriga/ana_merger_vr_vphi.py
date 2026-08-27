@@ -54,6 +54,18 @@ print(f'  of these, Eos-like at z=0 ({-VPHI_MAX:.0f}<v_phi<{VPHI_MAX:.0f}, ecc>{
 print(f'  their v_phi at birth: median {np.median(bvphi[eos]):.1f} km/s '
       f'(whole sample {np.median(bvphi):.1f})')
 
+# Two different fractions, easy to confuse:
+#  (i)  of the stars born during the merger, how many end up Eos-like
+#  (ii) of all the Eos-like stars in the galaxy, how many were born in the merger
+eos_all = (np.abs(cat['vphi']) < VPHI_MAX) & (cat['ecc'] > ECC_MIN)
+born_in = (cat['tform'] > tform.min()) & (cat['tform'] < tform.max())
+print(f"\n  (i)  merger-born stars that end up Eos-like : {eos.sum():,} / {len(bvR):,}"
+      f" = {100*eos.mean():.2f}%")
+print(f"  (ii) Eos-like stars that were born in the merger window : "
+      f"{(eos_all & born_in).sum():,} / {eos_all.sum():,} = "
+      f"{100*(eos_all & born_in).sum()/eos_all.sum():.2f}%")
+print(f"       for scale, that window holds {100*born_in.mean():.2f}% of all in-situ stars")
+
 g_ok = np.isfinite(cat['gse_vphi'])
 fig, axes = plt.subplots(1, 3, figsize=(19.5, 5.9))
 
@@ -67,6 +79,10 @@ for ax, (x, y, title) in zip(axes[:2], [
         ax.axhline(v, color=C_EOS, lw=1.2, ls='--')
     ax.axhline(0, color='.6', lw=.6)
     ax.axvline(0, color='.6', lw=.6)
+    # the parent population, so the Eos contours can be read against it rather
+    # than against the greyscale alone
+    OT.density_contours(ax, x, y, RNG, '#2166ac', label='all merger-born',
+                        levels=(0.9, 0.6, 0.3), bins=70)
     # the subset that ends up Eos-like, on both planes
     OT.density_contours(ax, x[eos], y[eos], RNG, C_EOS, label='ends up Eos-like',
                         levels=(0.9, 0.6, 0.3), bins=70)
@@ -80,6 +96,8 @@ for ax, (x, y, title) in zip(axes[:2], [
 # third panel: z=0 with the accreted debris for scale
 ax = axes[2]
 ax.hist2d(zvR, zvphi, bins=140, range=RNG, cmap='Greys', cmin=1, norm=LogNorm())
+OT.density_contours(ax, zvR, zvphi, RNG, '#2166ac', label='all merger-born',
+                    levels=(0.9, 0.6, 0.3), bins=70)
 OT.density_contours(ax, zvR[eos], zvphi[eos], RNG, C_EOS, label='merger-born, Eos-like',
                     levels=(0.9, 0.6, 0.3), bins=70)
 OT.density_contours(ax, cat['gse_vR'][g_ok], cat['gse_vphi'][g_ok], RNG, C_GSE,
