@@ -30,6 +30,20 @@ def load():
 
     d = dict(ids=k['ids'][ok], bvR=k['birth_vR'][ok], bvphi=k['birth_vphi'][ok],
              zvR=k['z0_vR'][ok], zvphi=k['z0_vphi'][ok])
+
+    # Birth radii, from ana_birth_radii.py: each star is measured in the first
+    # stored snapshot at or after it formed, i.e. R_birth is approximated by the
+    # radius at the nearest snapshot rather than interpolated to the exact
+    # formation time.  Snapshot spacing here is ~0.15 Gyr.
+    br = np.load(C.OUT_DIR + '/merger_birth_radii.npz')
+    ob = np.argsort(br['ids']); bids = br['ids'][ob]
+    pb = np.searchsorted(bids, d['ids'])
+    okb = (pb < len(bids)) & (bids[np.minimum(pb, len(bids) - 1)] == d['ids'])
+    ixb = ob[pb[okb]]
+    for key in ('R_birth', 'z_birth', 'r_birth', 'snap_birth'):
+        col = np.full(len(d['ids']), np.nan)
+        col[okb] = br[key][ixb]
+        d[key] = col
     for key in ('ecc', 'age', 'tform', 'feh', 'r', 'R', 'z', 'rapo', 'eps',
                 'cfe', 'nfe', 'ofe', 'nefe', 'mgfe', 'sife'):
         d[key] = cat[key][ix]
