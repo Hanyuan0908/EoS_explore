@@ -12,13 +12,23 @@ axisymmetric; eight azimuths are run and the spread between them is reported.
 
 Top row is the full population, bottom row the solar-neighbourhood selection, so
 the effect of the selection can be read directly.
+
+Both rows are drawn as kernel density estimates rather than histograms, because
+the local samples are only ~70-100 stars and the binning dominated the shape.
+Two things are done to keep that honest.  The kernels are reflected at the hard
+edges of the selection -- |v_phi| < 80, ecc > 0.6, and the physical floors
+J_R > 0 and J_R/|L_z| > 0 -- since a plain KDE spills across them and invents
+density where the sample cannot reach.  And the bottom row carries a bootstrap
+band, the 16th-84th percentile of 400 resamplings, which is the honest width of
+what ~100 stars constrain; the top row shows a faint histogram behind the curve
+so the KDE can be checked where the sample is large.
 """
 import os, sys
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from scipy.stats import ks_2samp
+from scipy.stats import ks_2samp, gaussian_kde
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config_au18 as C
 import eos_origins as EO
@@ -54,26 +64,84 @@ sun0 = solar_mask(AZ[0])
 
 C_HALO, C_DISC = '#7b3294', 'crimson'
 fin = np.isfinite(d['Jr']) & np.isfinite(d['ecc'])
-PANELS = [('zvphi', r'$v_\phi$ [km s$^{-1}$]', np.linspace(-150, 150, 31), 'Azimuthal velocity'),
-          ('ecc', 'eccentricity', np.linspace(0.4, 1.0, 25), 'Eccentricity'),
-          ('Jr', r'$J_R$ [kpc km s$^{-1}$]', np.linspace(0, 4000, 27), 'Radial action'),
-          ('JrLz', r'$J_R/|L_z|$', np.linspace(0, 15, 25), '$J_R/|L_z|$')]
+# bounds are the hard edges of the selection or of the quantity itself
+PANELS = [('zvphi', r'$v_\phi$ [km s$^{-1}$]', np.linspace(-100, 100, 31), 'Azimuthal velocity', (-80., 80.)),
+          ('ecc', 'eccentricity', np.linspace(0.55, 1.0, 25), 'Eccentricity', (0.6, 1.0)),
+          ('Jr', r'$J_R$ [kpc km s$^{-1}$]', np.linspace(0, 3000, 27), 'Radial action', (0., None)),
+          ('JrLz', r'$J_R/|L_z|$', np.linspace(0, 12, 25), '$J_R/|L_z|$', (0., None))]
+
+
+def kde_reflected(v, grid, bounds, bw=None):
+    """Gaussian KDE with reflection at hard bounds, so no density leaks past them.
+
+    The bandwidth uses a ROBUST scale, min(sigma, IQR/1.349), rather than scipy's
+    default.  J_R/|L_z| has a heavy tail -- the standard deviation is 160 and 613
+    for the two populations against an interquartile range of order unity -- and
+    Scott's rule driven by that sigma smears the distribution into a flat line
+    that bears no resemblance to the histogram.
+    """
+    v = np.asarray(v, float)
+    v = v[np.isfinite(v)]
+    if len(v) < 5 or np.std(v) == 0:
+        return None
+    if bw is None:
+        sig = np.std(v)
+        iqr = np.subtract(*np.percentile(v, [75, 25]))
+        scale = min(sig, iqr / 1.349) if iqr > 0 else sig
+        bw = 0.9 * scale * len(v) ** (-0.2) / sig      # scipy multiplies by sigma
+    k = gaussian_kde(v, bw_method=bw)
+    out = k(grid)
+    lo, hi = bounds
+    if lo is not None:
+        out += k(2 * lo - grid)
+    if hi is not None:
+        out += k(2 * hi - grid)
+    if lo is not None:
+        out[grid < lo] = 0.
+    if hi is not None:
+        out[grid > hi] = 0.
+    return out
+
+
+def kde_band(v, grid, bounds, nboot=400, rng=None):
+    """16th-84th percentile of the KDE over bootstrap resamplings."""
+    rng = rng or np.random.default_rng(11)
+    v = np.asarray(v, float); v = v[np.isfinite(v)]
+    curves = []
+    for _ in range(nboot):
+        c = kde_reflected(rng.choice(v, len(v), replace=True), grid, bounds)
+        if c is not None:
+            curves.append(c)
+    if not curves:
+        return None, None
+    return np.percentile(curves, [16, 84], axis=0)
 
 fig, axes = plt.subplots(2, 4, figsize=(23, 10.4))
 for row, (sel, tag) in enumerate([(np.ones(len(d['ids']), bool), 'all stars in each population'),
                                   (sun0, f'$d<{DMAX:.0f}$ kpc of a Sun at $R={RSUN}$ kpc')]):
-    for col, (key, xlab, bins, title) in enumerate(PANELS):
+    for col, (key, xlab, bins, title, bounds) in enumerate(PANELS):
         ax = axes[row, col]
+        grid = np.linspace(bins[0], bins[-1], 400)
         for lab, m, c in [('halo-born (merger-triggered)', d['halo_born'], C_HALO),
                           ('disc-born (heated)', d['disc_born'], C_DISC)]:
             v = d[key][m & fin & sel]
             v = v[np.isfinite(v)]
             if len(v) < 5:
                 continue
-            ax.hist(v, bins=bins, density=True, histtype='step', lw=2.3, color=c,
-                    label=f'{lab} ({len(v):,})')
+            if row == 0:                       # faint histogram to check the KDE against
+                ax.hist(v, bins=bins, density=True, histtype='step', lw=1.0,
+                        color=c, alpha=.35)
+            curve = kde_reflected(v, grid, bounds)
+            if curve is not None:
+                ax.plot(grid, curve, color=c, lw=2.4, label=f'{lab} ({len(v):,})')
+            if row == 1:
+                lo, hi = kde_band(v, grid, bounds)
+                if lo is not None:
+                    ax.fill_between(grid, lo, hi, color=c, alpha=.18, lw=0)
+                ax.plot(v, np.full(len(v), -0.03 * ax.get_ylim()[1]), '|', color=c,
+                        ms=6, alpha=.5)
             ax.axvline(np.median(v), color=c, ls=':', lw=1.5)
-        ax.set(xlabel=xlab, ylabel='normalised density', xlim=(bins[0], bins[-1]),
+        ax.set(xlabel=xlab, ylabel='density', xlim=(bins[0], bins[-1]),
                title=f'({"abcd efgh"[row * 5 + col]}) {title}')
         ax.legend(fontsize=8.5)
     axes[row, 0].text(.02, .98, tag, transform=axes[row, 0].transAxes, va='top',
@@ -81,7 +149,9 @@ for row, (sel, tag) in enumerate([(np.ones(len(d['ids']), bool), 'all stars in e
                       bbox=dict(fc='white', alpha=.85, ec='none'))
 
 fig.suptitle(f'Au18: the two Eos populations, all stars (top) and as seen from a Sun at '
-             f'$R={RSUN}$ kpc within $d<{DMAX:.0f}$ kpc (bottom)', fontsize=13.5)
+             f'$R={RSUN}$ kpc within $d<{DMAX:.0f}$ kpc (bottom).  Kernel density estimates, '
+             f'reflected at the selection bounds;\nshaded band = 16th-84th percentile over 400 '
+             f'bootstrap resamplings, ticks = the individual stars', fontsize=12.5)
 fig.tight_layout(rect=[0, 0, 1, .95])
 out = C.FIG_DIR + '/au18_eos_origins_solar.png'
 fig.savefig(out, dpi=145)
@@ -96,7 +166,7 @@ print(f'{"N":12s} {(d["halo_born"] & fin).sum():10,} {(d["disc_born"] & fin).sum
       f'{int(np.median(nh)):12,} {int(np.median(nd)):7,}   '
       f'(range over azimuth {min(nh)}-{max(nh)} and {min(nd)}-{max(nd)})')
 print()
-for key, xlab, bins, title in PANELS:
+for key, xlab, bins, title, bounds in PANELS:
     a_all = d[key][d['halo_born'] & fin]; b_all = d[key][d['disc_born'] & fin]
     a_all = a_all[np.isfinite(a_all)]; b_all = b_all[np.isfinite(b_all)]
     ks_all = ks_2samp(a_all, b_all)
