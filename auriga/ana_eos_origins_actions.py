@@ -50,8 +50,8 @@ POPS = [('halo-born Eos (merger-triggered)', d['halo_born'] & fin, C_HALO),
 PANELS = [
     ('vphi', r'$v_\phi$ [km s$^{-1}$]', np.linspace(-150, 150, 46), False, '(a) Azimuthal velocity'),
     ('ecc', 'eccentricity', np.linspace(0.4, 1.0, 40), False, '(b) Eccentricity'),
-    ('Jr', r'$J_R$ [kpc km s$^{-1}$]', np.logspace(0, 3.6, 46), True, '(c) Radial action'),
-    ('JrLz', r'$J_R / |L_z|$', np.logspace(-1.6, 1.6, 46), True, '(d) $J_R/|L_z|$'),
+    ('Jr', r'$J_R$ [kpc km s$^{-1}$]', np.linspace(0, 4000, 46), False, '(c) Radial action'),
+    ('JrLz', r'$J_R / |L_z|$', np.linspace(0, 15, 46), False, '(d) $J_R/|L_z|$'),
 ]
 KEY = {'vphi': 'zvphi', 'ecc': 'ecc', 'Jr': 'Jr', 'JrLz': 'JrLz'}
 
@@ -69,9 +69,8 @@ for ax, (key, xlab, bins, logx, title) in zip(axes, PANELS):
     gv = gv[np.isfinite(gv)]
     ax.hist(gv, bins=bins, density=True, histtype='step', lw=1.7, ls='--', color=C_GSE,
             label='GS/E debris')
-    if logx:
-        ax.set_xscale('log')
-    ax.set(xlabel=xlab, ylabel='normalised density', title=title)
+    ax.set(xlabel=xlab, ylabel='normalised density', title=title,
+           xlim=(bins[0], bins[-1]))
     ax.legend(fontsize=8)
 
 fig.suptitle('Au18: present-day kinematics of the two Eos populations -- is there any '
@@ -94,4 +93,11 @@ for key, xlab, bins, logx, title in PANELS:
           f'{np.median(b):10.3f} +/- {np.std(b):7.3f} '
           f'{ks.statistic:7.3f} {ks.pvalue:10.2e} {ov:9.3f}')
 print('\n(overlap = fraction of the two distributions that coincides; 1 = identical)')
+print('\nfraction beyond the right-hand edge of each linear axis:')
+for key, xlab, bins, logx, title in PANELS:
+    frac = {lab: np.mean(v > bins[-1]) for lab, v in stats[key].items()}
+    gv = gse[key][np.isfinite(gse[key])]
+    print(f'  {key:6s} > {bins[-1]:7.1f}:  '
+          + '  '.join(f'{lab.split()[0]} {f:.3f}' for lab, f in frac.items())
+          + f'  GS/E {np.mean(gv > bins[-1]):.3f}')
 print('saved', out)
