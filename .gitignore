@@ -26,3 +26,4 @@ auriga/out/gas_disc_evolution_au18.npz
 auriga/out/gas_disc_evolution_au*.npz
 auriga/out/eos_two_origins.npz
 auriga/out/merger_rg_birth.npz
+auriga/out/z0_actions.npz
