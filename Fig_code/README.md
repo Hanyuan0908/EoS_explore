@@ -151,3 +151,96 @@ writes the `_papercuts` variant.
 
 The two-panel `splash_vphi_evolution` figure is kept as it is; this is an
 addition, not a replacement.
+
+---
+
+# Observational figures (APOGEE) — made on the Mac; see `CONVENTIONS_observational.md`
+
+## `obs_mg_al_meanal/` -> `Fig_paper/obs_mg_al_meanal.pdf`
+
+The chemical planes behind the in-situ selection, three panels each with its own
+colourbar. (a) [Mg/Fe]-[Fe/H] log-density with the accreted (dashed) and
+high-a/low-a (dotted) lines and the accreted / high-a / low-a labels; (b)
+[Al/Fe]-[Fe/H] log-density with the in-situ Al cut ([Al/Fe]=-0.12); (c) the
+[Mg/Fe]-[Fe/H] plane coloured by mean [Al/Fe], showing Al rises across the
+high-a/low-a line. Panels (a),(b) reproduce the Mg/Al panels of
+`figures_repro/01_fig1_energy_mg_al.png`; (c) reproduces the mean-[Al/Fe] panel of
+`figures_repro/01_fig4_alfe_3pops.png`. Portable: reads only
+`data_repro/our_apogee_dr17_lite_ann.fits.gz`. Run with the local `astro312`.
+
+## `obs_energy_pops/` -> `Fig_paper/obs_energy_pops.pdf`
+
+E-Lz for the three populations (accreted / high-a / low-a), log-density in the
+(Lz, E) plane with the Lz=0 line; the Eos overdensity is labelled in the low-a
+panel. Exact reproduction of `eos_figures.figures.plot_energy_pops`
+(== `figures_repro/01_fig3_energy_pops.png`). Portable: reads only
+`data_repro/our_apogee_dr17_lite_ann.fits.gz`. Run with the local `astro312`.
+
+## `obs_alfe_pops/` -> `Fig_paper/obs_alfe_pops.pdf`
+
+[Al/Fe]-[Fe/H] for accreted / high-a / low-a. Top row: column-normalised density
+with the accreted diagonal and the in-situ Al cut. Bottom row: the same planes
+coloured by median V_phi (colourbar on the high-a panel), with the GS/E, Aurora,
+Splash+high-a disk, Eos and low-a disk features labelled. Reproduces
+`eos_figures.figures.plot_alfe_pops`; only change is the colourbar label
+V_tan -> V_phi. Portable. Run with the local `astro312`.
+
+## `obs_lowa_vtan_pixels/` -> `Fig_paper/obs_lowa_vtan_pixels.pdf`
+
+The low-a (in-situ) population in the [Fe/H]-V_phi plane, three pixel panels
+(bins=70x70, min_count=1): (a) number counts (cmasher amber, log); (b) mean
+apocentric radius r_apo; (c) mean pericentric radius r_peri (both RdYlBu_r).
+Colourbars are inset in the freed bottom space (y extended to -250). Shows the
+slow/non-rotating Eos foot below ~100 km/s is on plunging eccentric orbits.
+Portable. Run with the local `astro312`.
+
+## `obs_nfe_pops/` -> `Fig_paper/obs_nfe_pops.pdf` (+ `obs_cfe_pops.pdf`)
+
+[N/Fe]-[Fe/H] for the two in-situ populations (high-a / low-a), 2x2. Top row:
+column-normalised [N/Fe]-[Fe/H] density (Greys) with the P5 and P95 tracks of
+[N/Fe] vs [Fe/H] (both red); bottom row: the same planes coloured by median
+V_phi. Colourbars at the far right, one per row; equal physical aspect (1 dex
+[Fe/H] == 1 dex [N/Fe]). Derived from `scripts_repro/plot_fig2_nfe_pops.py` with
+the accreted column, legend, median line and "Eos?" annotation removed.
+Element-parametrised (`n_fe` default, `c_fe` optional). Portable. Run with the
+local `astro312`.
+
+## `obs_ndispersion/` -> `Fig_paper/obs_ndispersion.pdf`
+
+Nitrogen dispersion, Eos vs low-a disc, with the high-a (Splash) benchmark.
+(a) high-a and (b) low-a samples in [Fe/H]-V_phi (row-normalised density), each
+with a low-V_phi box (Splash / Eos) and a disc box over -0.8<[Fe/H]<-0.5; (c)
+robust sigma_[N/Fe] (1.48xMAD) vs [Fe/H] for the four bands (low-a solid, high-a
+dashed) against the Aurora level (purple band). Shows the low-V_phi N excess is
+present in low-a (Eos) but not high-a (Splash). Derived from
+`scripts_repro/build_nb.py::disp_figure`; V_tan->V_phi, matched-Delta-sigma
+annotations removed, right-panel y starts at 0.05, legend given headroom above
+the Aurora line. Portable. Run with the local `astro312`.
+
+## `obs_amr_agedist/` -> `Fig_paper/obs_amr_agedist.pdf`
+
+Eos metallicity-age structure vs the high/low-a disc and Splash (AstroNN ages).
+(a) [Fe/H]-[Mg/Fe] with the high/low-a split (solid) and accreted (dashed) lines;
+(b) age KDE of Eos / Splash / low-a disc / high-a disc; (c) age-[Fe/H] plane with
+nested 90/60/30% KDE contours per population over the grey base density. Same cuts
+as all prior analysis: Eos = canonical cut (n=353 -> 191/162; 318 after the
+sigma_age/age<0.3 age cut in the age panels), low-a disc = thin_al & V_phi>150,
+high-a disc = thick_al & V_phi>150, Splash = thick_al & V_phi<80. Assembled from
+`scripts_repro/plot_eos_amr_agedist.py` (itself from `plot_eos_amr.py` +
+`build_nb.py` Fig 6). Portable. Run with the local `astro312`.
+
+## `obs_eos_branches_overview/` -> `Fig_paper/obs_eos_branches_overview.pdf`
+
+Five-panel overview of the two Eos branches split by the Davies divider
+[Mg/Fe]=0.317*[Fe/H]+0.353. Top row = two large 2D maps: (a) halo [Mg/Fe]-[Fe/H]
+density with the accreted (dashed), high/low-a (dotted) and Eos-divider (green)
+lines; (b) same plane coloured by mean J_R (RdYlBu_r, red=high J_R, 300-1000
+kpc km/s). Bottom row: (c) J_R distribution of the two branches; (d) deconvolved
+sigma_[N/Fe] per branch vs [Fe/H] with the low-a disc; (e) age distribution of the
+low-a disc by [Fe/H] (YlOrRd, age axis 2-11 Gyr) + the two Eos branches. **Branch->metallicity
+mapping is data-driven**: alpha-rich (upper) median [Fe/H]=-0.71 => "Eos metal-poor"
+(red); alpha-poor (lower) median [Fe/H]=-0.46 => "Eos metal-rich" (blue). Colours
+consistent across (c)/(d)/(e); (e) uses YlOrRd for the [Fe/H] bar. Assembled from scripts_repro
+plot_davies_fig2_jr.py + plot_eos_action_dists.py + plot_eos_bifurcation.py +
+plot_eos_age_dist.py. Actions via AGAMA/McMillan17 from the AstroNN VAC (Mac-only
+6D). Run with the local `astro312`.
