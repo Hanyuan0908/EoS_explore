@@ -224,7 +224,7 @@ def running_sigma(band, x, y, xr, nb=3, minn=10):
             s = 1.4826*np.median(np.abs(yy-np.median(yy))); sig[i] = s; err[i] = s/np.sqrt(2*yy.size)
     return cen, sig, err
 
-def disp_figure(ycol, ylabel, title, fname, ann_low, ann_high, ylo=0.04):
+def disp_figure(ycol, ylabel, title, fname, ann_low, ann_high, ylo=0.04, hline=None):
     y = np.asarray(cat[ycol], float)
     fig, ax = plt.subplots(1, 3, figsize=(15.5, 4.3), constrained_layout=True)
     for p, (pop, ptitle) in enumerate([("thick_al", r"high-$\\alpha$"), ("thin_al", r"low-$\\alpha$")]):
@@ -242,6 +242,11 @@ def disp_figure(ycol, ylabel, title, fname, ann_low, ann_high, ylo=0.04):
         band = np.asarray(m[pop], bool) & (vphi > vlo) & (vphi < vhi)
         cen, sig, err = running_sigma(band, feh, y, FEHR_BOX)
         ax[2].errorbar(cen, sig, yerr=err, color=col, ls=ls, marker="o", ms=5, lw=1.6, capsize=3, label=lab)
+    if hline is not None:
+        hv, he, hlab = hline
+        ax[2].axhspan(hv - he, hv + he, color="purple", alpha=0.12, zorder=0)
+        ax[2].axhline(hv, color="purple", ls=(0, (5, 2)), lw=1.3, zorder=1)
+        ax[2].text(-0.805, hv, hlab, fontsize=7, color="purple", va="bottom", ha="left")
     ax[2].set_xlim(-0.82, -0.48); ax[2].set_ylim(ylo, None)
     ax[2].text(0.5, 0.12, ann_low, transform=ax[2].transAxes, ha="center", fontsize=8, color="0.3")
     ax[2].text(0.5, 0.06, ann_high, transform=ax[2].transAxes, ha="center", fontsize=8, color="0.3")
@@ -253,7 +258,8 @@ def disp_figure(ycol, ylabel, title, fname, ann_low, ann_high, ylo=0.04):
 disp_figure("n_fe", r"$\\sigma_{\\rm [N/Fe]}$ [dex]", r"N dispersion: low- vs high-$V_{\\rm tan}$",
             "01_eos_Ndispersion.png",
             r"matched $\\Delta\\sigma_N$:  low-$\\alpha$ $+0.024\\pm0.011$ (2$\\sigma$)",
-            r"high-$\\alpha$ $-0.006\\pm0.003$ (no excess)")
+            r"high-$\\alpha$ $-0.006\\pm0.003$ (no excess)",
+            hline=(0.149, 0.004, r"Aurora ($-1.5<$[Fe/H]$<-1$, $V_{tan}<100$)"))
 """))
 
 cells.append(md(
@@ -285,6 +291,118 @@ cells.append(code(
             "01_eos_Tidispersion.png",
             r"matched $\\Delta\\sigma_{Ti}$:  low-$\\alpha$ $+0.017\\pm0.008$ ($\\sim2\\sigma$)",
             r"high-$\\alpha$ $+0.007\\pm0.002$", ylo=0.03)
+"""))
+
+cells.append(md(
+"""## [N/Fe] distributions of the four blocks
+The [N/Fe] distributions in the box -0.8<[Fe/H]<-0.5 for the four blocks (low-α Eos / disc,
+high-α Splash / disc). Left: raw [N/Fe] — the four differ mostly in *mean*, because [N/Fe]
+rises with [Fe/H] and the blocks sit at different [Fe/H]. Right: [Fe/H]-detrended residual
+(each star minus its population's running-median [N/Fe] vs [Fe/H]), so the four are centered
+and their *widths* are directly comparable — this is what the dispersion test measures. Watch
+whether the low-α Eos (blue) is a symmetric broadening or a skew/outlier tail."""))
+cells.append(code(
+"""from scipy.stats import gaussian_kde
+feh = np.asarray(cat["fe_h"], float); vphi = np.asarray(cat["galvt"], float); nfe = np.asarray(cat["n_fe"], float)
+BOX = (-0.8, -0.5); VLO, VHI = (-75, 75), (150, 300)
+blocks = [("thin_al",  VLO, "royalblue",  "-",  r"low-$\\alpha$ Eos"),
+          ("thin_al",  VHI, "firebrick",  "-",  r"low-$\\alpha$ disc"),
+          ("thick_al", VLO, "darkorange", "--", r"high-$\\alpha$ Splash"),
+          ("thick_al", VHI, "seagreen",   "--", r"high-$\\alpha$ disc")]
+
+def pop_trend(pop):   # running median [N/Fe] vs [Fe/H] for detrending
+    P = np.asarray(m[pop], bool) & (feh >= -0.9) & (feh < -0.45) & np.isfinite(nfe)
+    edges = np.arange(-0.9, -0.45 + 1e-9, 0.05); cen = 0.5 * (edges[:-1] + edges[1:])
+    med = np.array([np.median(nfe[P & (feh >= edges[i]) & (feh < edges[i+1])])
+                    if (P & (feh >= edges[i]) & (feh < edges[i+1])).sum() > 5 else np.nan
+                    for i in range(len(cen))])
+    ok = np.isfinite(med); return cen[ok], med[ok]
+trends = {p: pop_trend(p) for p in ("thin_al", "thick_al")}
+
+fig, ax = plt.subplots(1, 2, figsize=(11, 4.2), constrained_layout=True)
+xg = np.linspace(-0.6, 0.9, 300); rg = np.linspace(-0.5, 0.6, 300)
+for pop, (vlo, vhi), col, ls, lab in blocks:
+    sel = np.asarray(m[pop], bool) & (vphi > vlo) & (vphi < vhi) & (feh >= BOX[0]) & (feh < BOX[1]) & np.isfinite(nfe)
+    x = nfe[sel]
+    ax[0].plot(xg, gaussian_kde(x)(xg), color=col, ls=ls, lw=1.7, label=f"{lab} (n={x.size})")
+    cx, cy = trends[pop]; res = x - np.interp(feh[sel], cx, cy)
+    sig = 1.4826 * np.median(np.abs(res - np.median(res)))
+    ax[1].plot(rg, gaussian_kde(res)(rg), color=col, ls=ls, lw=1.7, label=f"{lab} ($\\sigma$={sig:.3f})")
+ax[0].set_xlim(-0.6, 0.9); ax[0].set_ylim(0, None)
+label_axes(ax[0], "[N/Fe]", "density", r"raw [N/Fe]  ($-0.8<$[Fe/H]$<-0.5$)")
+ax[0].legend(frameon=False, fontsize=8)
+ax[1].axvline(0, color="k", lw=0.6, ls=":"); ax[1].set_xlim(-0.5, 0.6); ax[1].set_ylim(0, None)
+label_axes(ax[1], r"$\\Delta$[N/Fe]  (trend-removed)", "density", "[Fe/H]-detrended [N/Fe]")
+ax[1].legend(frameon=False, fontsize=8)
+fig.savefig(FIGDIR / '01_eos_Ndistribution.png', dpi=150, bbox_inches='tight')
+plt.show()
+"""))
+
+cells.append(md(
+"""## Error-deconvolved N dispersion for the four blocks
+Subtract the measurement error in quadrature: $\\sigma_{int}=\\sqrt{\\sigma_{obs}^2-\\langle err^2\\rangle}$
+(using $\\sqrt{\\langle err^2\\rangle}$, the RMS error, since per-star N errors vary ~2x within a bin).
+Solid+markers = intrinsic (error bars from bootstrap); faint = observed. N errors are small
+(~0.03 dex) so the correction is tiny and the low-α Eos excess survives: matched intrinsic
+$\\Delta\\sigma_N$ = low-α $+0.023\\pm0.012$, high-α $-0.007\\pm0.003$."""))
+cells.append(code(
+"""rng = np.random.default_rng(0)
+feh = np.asarray(cat["fe_h"], float); vphi = np.asarray(cat["galvt"], float)
+nfe = np.asarray(cat["n_fe"], float); nerr = np.asarray(cat["n_fe_err"], float)
+
+def block_sigma(pop, vlo, vhi, xr=(-0.8, -0.5), nb=3, nboot=800, minn=10):
+    band = np.asarray(m[pop], bool) & (vphi > vlo) & (vphi < vhi) & np.isfinite(nfe) & np.isfinite(nerr)
+    edges = np.linspace(*xr, nb+1); cen = 0.5*(edges[:-1]+edges[1:])
+    sobs = np.full(nb, np.nan); sint = np.full(nb, np.nan); serr = np.full(nb, np.nan)
+    for i in range(nb):
+        b = band & (feh >= edges[i]) & (feh < edges[i+1]); y = nfe[b]; e = nerr[b]
+        if y.size >= minn:
+            so = 1.4826*np.median(np.abs(y-np.median(y)))
+            sobs[i] = so; sint[i] = np.sqrt(max(so**2 - np.mean(e**2), 0))
+            bs = []
+            for _ in range(nboot):
+                k = rng.integers(0, y.size, y.size)
+                s = 1.4826*np.median(np.abs(y[k]-np.median(y[k])))
+                bs.append(np.sqrt(max(s**2 - np.mean(e[k]**2), 0)))
+            serr[i] = np.std(bs)
+    return cen, sobs, sint, serr
+
+fig, ax = plt.subplots(figsize=(6.8, 4.6), constrained_layout=True)
+for pop, (vlo, vhi), col, ls, lab in series:
+    cen, so, si, se = block_sigma(pop, vlo, vhi)
+    ax.plot(cen, so, color=col, ls=ls, lw=1.0, alpha=0.30)
+    ax.errorbar(cen, si, yerr=se, color=col, ls=ls, marker="o", ms=5, lw=1.7, capsize=3, label=lab)
+ax.set_xlim(-0.82, -0.48); ax.set_ylim(0.03, None)
+ax.text(0.5, 0.13, "intrinsic (solid) vs observed (faint)", transform=ax.transAxes, ha="center", fontsize=8, color="0.3")
+ax.text(0.5, 0.07, r"matched $\\Delta\\sigma_N^{\\rm int}$:  low-$\\alpha$ $+0.023\\pm0.012$;  high-$\\alpha$ $-0.007\\pm0.003$",
+        transform=ax.transAxes, ha="center", fontsize=7.5, color="0.3")
+label_axes(ax, "[Fe/H]", r"$\\sigma_{\\rm [N/Fe]}$ [dex]", r"N dispersion, error-deconvolved")
+ax.legend(frameon=False, fontsize=8, loc="upper right")
+fig.savefig(FIGDIR / '01_eos_Ndispersion_deconv.png', dpi=150, bbox_inches='tight')
+plt.show()
+"""))
+
+cells.append(md(
+"""## [N/Fe] measurement-error distribution in the four blocks
+The ASPCAP *formal* N error for each block over -0.8<[Fe/H]<-0.5. Medians are ~0.022-0.027 dex
+with a thin tail; 95th percentiles <0.05. So the measured $\\sigma_{[N/Fe]}$ (0.07-0.14) really
+is dominated by astrophysical scatter, not error. (Caveat: these are the pipeline's formal
+errors, which can be mildly underestimated — but even doubling them would not erase the Eos excess.)"""))
+cells.append(code(
+"""from scipy.stats import gaussian_kde
+nerr = np.asarray(cat["n_fe_err"], float)
+fig, ax = plt.subplots(figsize=(6.8, 4.4), constrained_layout=True)
+xg = np.linspace(0, 0.10, 300)
+for pop, (vlo, vhi), col, ls, lab in series:
+    sel = np.asarray(m[pop], bool) & (vphi > vlo) & (vphi < vhi) & (feh >= -0.8) & (feh < -0.5) & np.isfinite(nerr)
+    e = nerr[sel]
+    ax.plot(xg, gaussian_kde(e)(xg), color=col, ls=ls, lw=1.7, label=f"{lab} (median={np.median(e):.3f}, n={e.size})")
+ax.axvline(np.median(nerr[(feh >= -0.8) & (feh < -0.5)]), color="0.5", lw=0.8, ls=":")
+ax.set_xlim(0, 0.10); ax.set_ylim(0, None)
+label_axes(ax, "[N/Fe] measurement error [dex]", "density", r"N error distribution ($-0.8<$[Fe/H]$<-0.5$)")
+ax.legend(frameon=False, fontsize=8)
+fig.savefig(FIGDIR / '01_eos_Nerr_dist.png', dpi=150, bbox_inches='tight')
+plt.show()
 """))
 
 cells.append(md(

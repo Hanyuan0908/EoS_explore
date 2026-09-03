@@ -7,3 +7,6 @@ eos-figures/
 *.pyc
 .mplconfig/
 .cache/
+
+# derived wide species cache (133MB, rebuild via scripts_repro/build_species_cache.py)
+data_repro/our_apogee_allspecies.fits.gz
