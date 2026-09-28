@@ -205,6 +205,19 @@ the accreted column, legend, median line and "Eos?" annotation removed.
 Element-parametrised (`n_fe` default, `c_fe` optional). Portable. Run with the
 local `astro312`.
 
+### `fig_paper_nfe_pops_3pop.py` -> `Fig_paper/obs_nfe_pops_3pop.pdf` (+ `obs_cfe_pops_3pop.pdf`)
+
+Same figure/style as `obs_nfe_pops` but 2x3, with the **accreted** column re-added on
+the left; the two in-situ panels are identical to `obs_nfe_pops`. The accreted panel
+carries an extra chemical outlier rejection (N/Fe figure only): accreted stars above
+the line (-1.5, 0.6)->(-0.5, 0.42) or below (-1.5, -0.2)->(-1.0, -0.4) are removed
+(green dashed lines drawn; 193 stars, 2572->2379). These are chemical outliers only --
+the `acc` mask already applies |Lz| < 500 and every accreted star has a finite V_phi.
+Shared greyscale stretch across all three top panels. Motivated by B&K22 (Belokurov &
+Kravtsov 2022): after the cut the accreted [N/Fe] spread is smaller than the in-situ
+Aurora, as B&K22 report, without damping the Aurora dispersion. Portable. Run with the
+local `astro312`.
+
 ## `obs_ndispersion/` -> `Fig_paper/obs_ndispersion.pdf`
 
 Nitrogen dispersion, Eos vs low-a disc, with the high-a (Splash) benchmark.
@@ -244,3 +257,20 @@ consistent across (c)/(d)/(e); (e) uses YlOrRd for the [Fe/H] bar. Assembled fro
 plot_davies_fig2_jr.py + plot_eos_action_dists.py + plot_eos_bifurcation.py +
 plot_eos_age_dist.py. Actions via AGAMA/McMillan17 from the AstroNN VAC (Mac-only
 6D). Run with the local `astro312`.
+
+## `obs_eos_age_dist/` -> `Fig_paper/obs_eos_age_dist.pdf`
+
+Two-panel age distributions of Eos and its two metallicity branches vs Splash and
+the low-a disc, in two age catalogues: (a) AstroNN (`age`, sigma_age/age<0.15);
+(b) BINGO (age = 10**`pred_logAge`; Ciuca+2024 cuts with sigma(log tau)<=0.1,
+0-18 Gyr raw scale). Curves are Gaussian KDEs. Eos = canonical cut (n=353 ->
+191/162); the two branches are split by the Davies divider
+[Mg/Fe]=0.317*[Fe/H]+0.353 and relabelled by their data-driven metallicity:
+alpha-rich/upper => **Eos, metal-poor** (tomato); alpha-poor/lower => **Eos,
+metal-rich** (blue). Splash = thick_al & V_phi<80; low-a disc = thin_al & V_phi>150.
+One shared legend (identical for both panels), no counts/annotations on the figure.
+The alpha-rich/metal-poor branch is systematically older than the alpha-poor/metal-rich
+branch in both catalogues; BINGO branch counts are modest (23/23) so treat those
+dashed curves with care. Assembled from `scripts_repro/plot_eos_age_dist_pub.py`
+(family: `plot_eos_age_dist_4cat_branches.py`). BINGO ages are Mac-only
+(`APOGEE_DR17_bingoages.fits`). Run with the local `astro312`.

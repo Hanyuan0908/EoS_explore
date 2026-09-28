@@ -26,6 +26,7 @@ CAT = sys.argv[1] if len(sys.argv) > 1 else 'anders'
 SPECS = {
     'anders': (f'{APO}/APOGEE_AstroNNdist_Anders23age_BJdist.fits', 'APOGEE_ID_2', 'spAgeqrCal', 'e_spAgeqrCal', 'Anders+2023 spAgeqrCal'),
     'bingo':  (f'{APO}/APOGEE_DR17_bingoages.fits', 'APOGEE_ID', 'age_lowess_correct', 'age_total_error', 'BINGO (Ciucã+2024)'),
+    'bingo_raw': (f'{APO}/APOGEE_DR17_bingoages.fits', 'APOGEE_ID', 'age', 'pred_logAge_std', 'BINGO raw (Ciucã+2024)'),
 }
 FN, IDCOL, AGECOL, ERRCOL, LABEL = SPECS[CAT]
 
@@ -42,7 +43,10 @@ did = norm(d[IDCOL]); o = np.argsort(did); dids = did[o]
 p = np.clip(np.searchsorted(dids, aid), 0, len(dids)-1); ok = dids[p] == aid; src = o[p]
 age = np.where(ok, np.asarray(d[AGECOL], float)[src], np.nan)
 aerr = np.where(ok, np.asarray(d[ERRCOL], float)[src], np.nan)
-rel_ok = np.isfinite(age) & (age > 0) & (age < 20) & np.isfinite(aerr) & (aerr/age < 0.3)   # QUALITY CUT
+if CAT == 'bingo_raw':
+    rel_ok = np.isfinite(age) & (age > 0) & (age < 20) & np.isfinite(aerr) & (aerr <= 0.2)   # sigma(log age)<=0.2 (Ciuca)
+else:
+    rel_ok = np.isfinite(age) & (age > 0) & (age < 20) & np.isfinite(aerr) & (aerr/age < 0.3)   # QUALITY CUT
 
 halo = base & ((ecc > 0.7) | (lz < 0))
 def acc(f): return c.slope_acc*f + c.inter_acc
@@ -51,7 +55,8 @@ def divline(f): return 0.317*f + 0.353
 eos = halo & (feh > -0.9) & (feh < -0.2) & (mg > acc(feh)) & (mg < hl(feh)) & (al > c.alfe_cut)
 eos_hi = eos & (mg > divline(feh)); eos_lo = eos & (mg <= divline(feh))
 disc = thin_al & (vphi > 150)
-ag = np.linspace(0.5, 14, 300); cmap = cm.coolwarm; norm_c = colors.Normalize(-0.8, 0.4)
+AMAX = 18.0 if CAT == 'bingo_raw' else 14.0
+ag = np.linspace(0.5, AMAX, 300); cmap = cm.coolwarm; norm_c = colors.Normalize(-0.8, 0.4)
 
 # ============ (A) combined-Eos age distribution vs matched-metallicity disc ============
 fig, ax = plt.subplots(figsize=(8.6, 5.4), constrained_layout=True)
@@ -71,7 +76,7 @@ for i in range(len(edges)-1):
                 label=(f'low-$\\alpha$ disc {lo:.1f}<[Fe/H]<{hi:.1f}' if match else None))
 ax.plot(ag, gaussian_kde(ye)(ag), color='red', lw=4.0, zorder=6, label=f'Eos (n={ye.size}, med={np.median(ye):.1f})')
 ax.axvline(np.median(ye), color='red', ls=':', lw=1.5)
-ax.set_xlim(0.5, 14); ax.set_ylim(0, 1.1*ymax)
+ax.set_xlim(0.5, AMAX); ax.set_ylim(0, 1.1*ymax)
 label_axes(ax, f'age [Gyr] ({LABEL})', 'number density',
            f'Eos vs matched-metallicity disc  ({LABEL};  $\\sigma_{{age}}/age<0.3$)')
 ax.legend(frameon=False, fontsize=9, loc='upper left')
@@ -83,7 +88,7 @@ pops = [('high-$\\alpha$ disc', thick_al & (vphi > 150), 'seagreen'),
         ('low-$\\alpha$ disc',  thin_al & (vphi > 150), 'royalblue'),
         ('Splash',              thick_al & (vphi < 80), 'darkorange'),
         ('Eos',                 eos, 'red')]
-AGER = (0, 13.5); FEHR = (-1.15, 0.5)
+AGER = (0, AMAX); FEHR = (-1.15, 0.5)
 fig2, ax2 = plt.subplots(figsize=(9.5, 5.6), constrained_layout=True)
 sb = base & rel_ok & np.isfinite(feh) & np.isfinite(age)
 hb, xb, yb = np.histogram2d(age[sb], feh[sb], bins=[70, 70], range=[AGER, FEHR])

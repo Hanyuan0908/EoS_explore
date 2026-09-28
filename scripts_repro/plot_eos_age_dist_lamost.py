@@ -22,12 +22,19 @@ FIG = Path('/Users/hanyuan/Library/CloudStorage/Dropbox/python_script/EoS_explor
 cat = load_catalog('/Users/hanyuan/Library/CloudStorage/Dropbox/python_script/EoS_explore/data_repro/our_lamost_subgiant_ddpayne.fits.gz')
 m = make_masks(cat, c)
 feh = np.asarray(cat['fe_h'], float); mg = np.asarray(cat['mg_fe'], float); vphi = np.asarray(cat['galvt'], float)
+al = np.asarray(cat['al_fe'], float); lz = np.asarray(cat['lz'], float)
+rap = np.asarray(cat['rap'], float); rperi = np.asarray(cat['rperi'], float); ecc = (rap - rperi)/(rap + rperi)
 age = np.asarray(cat['age'], float); aerr = np.asarray(cat['age_model_error'], float)
 base = np.asarray(m['base'], bool); thin_al = np.asarray(m['thin_al'], bool)
 rel_ok = np.isfinite(age) & np.isfinite(aerr) & (age < 14) & (aerr/age < 0.3)
 
+# CANONICAL Eos cut (same as the AstroNN version plot_eos_age_dist.py): Davies halo
+# (ecc>0.7 | Lz<0) & low-alpha wedge & -0.9<[Fe/H]<-0.2, split by the Davies divider.
+halo = base & ((ecc > 0.7) | (lz < 0))
+def acc(f): return c.slope_acc*f + c.inter_acc
+def hl(f): return c.slope_acc2*f + c.inter_acc2
 def divline(f): return 0.317*f + 0.353
-eos = thin_al & (vphi < 80) & (feh > -0.9) & (feh < -0.5)
+eos = halo & (feh > -0.9) & (feh < -0.2) & (mg > acc(feh)) & (mg < hl(feh)) & (al > c.alfe_cut)
 eos_hi = eos & (mg > divline(feh)); eos_lo = eos & (mg <= divline(feh))
 disc = thin_al & (vphi > 150)
 CHI, CLO = 'magenta', 'cyan'
@@ -53,7 +60,7 @@ ax[0].set_xlim(-1.5, 0.5); ax[0].set_ylim(-0.05, 0.45)
 ax[0].legend(frameon=False, fontsize=9, loc='upper right')
 label_axes(ax[0], '[Fe/H]', '[Mg/Fe]', 'LAMOST: low-$\\alpha$ + two Eos branches')
 # --- right: age distributions per [Fe/H] bin (low-alpha disc) ---
-edges = np.arange(-0.8, 0.4 + 1e-9, 0.1); EOS_LO, EOS_HI = -0.8, -0.5
+edges = np.arange(-0.8, 0.4 + 1e-9, 0.1); EOS_LO, EOS_HI = -0.8, -0.3
 ymax = 0
 for i in range(len(edges)-1):
     lo, hi = edges[i], edges[i+1]; b = disc & rel_ok & (feh >= lo) & (feh < hi)
