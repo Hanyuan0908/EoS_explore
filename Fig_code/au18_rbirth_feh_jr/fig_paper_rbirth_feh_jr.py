@@ -64,8 +64,12 @@ mpl.rcParams.update({
     'font.serif': ['Times New Roman', 'Nimbus Roman', 'Liberation Serif',
                    'STIXGeneral', 'DejaVu Serif'],
     'mathtext.fontset': 'stix',
-    'font.size': 13.5, 'axes.labelsize': 15,
-    'xtick.labelsize': 13, 'ytick.labelsize': 13, 'legend.fontsize': 12.5,
+    # This figure is 9.6 x 10.8 in -- about twice the canvas of the other paper
+    # figures -- so the house 15 pt axis label renders small relative to the
+    # frame once it is scaled into a column.  Every size below is the house
+    # value x 1.27, which keeps the internal proportions identical.
+    'font.size': 17, 'axes.labelsize': 19,
+    'xtick.labelsize': 16.5, 'ytick.labelsize': 16.5, 'legend.fontsize': 16,
     'axes.linewidth': 1.0, 'xtick.direction': 'in', 'ytick.direction': 'in',
     'xtick.top': True, 'ytick.right': True, 'legend.frameon': False,
     'xtick.major.size': 5, 'ytick.major.size': 5,
@@ -133,26 +137,26 @@ pcm = ax_m.pcolormesh(xe, ye, np.where(h > 0, h, np.nan).T, cmap='Greys',
                       norm=LogNorm(vmin=1, vmax=h.max()), rasterized=True)
 cax = ax_m.inset_axes([.58, .085, .37, .028])
 cb = fig.colorbar(pcm, cax=cax, orientation='horizontal')
-cb.ax.tick_params(labelsize=10.5, length=2.5, pad=1.5)
+cb.ax.tick_params(labelsize=13, length=2.5, pad=1.5)
 cb.outline.set_linewidth(.7)
-cax.set_title('stars per bin, all born in the window', fontsize=10.5, pad=3.5)
+cax.set_title('stars per bin, all born in the window', fontsize=13, pad=3.5)
 for lab, m, c in POPS:
     OT.density_contours(ax_m, d['R_birth'][m & fin], d['feh'][m & fin],
                         [list(RRNG), list(FRNG)], c, levels=(0.9, 0.6, 0.3),
                         bins=70, smooth=1.5, lw=2.0)
 ax_m.set(xlim=RRNG, ylim=FRNG, xlabel=r'$R_{\rm birth}$ [kpc]', ylabel='[Fe/H]')
-ax_m.text(.025, .05, '(b)', transform=ax_m.transAxes, fontsize=16, fontweight='bold')
+ax_m.text(.025, .05, '(b)', transform=ax_m.transAxes, fontsize=20, fontweight='bold')
 
 # --- (a) R_birth marginal -----------------------------------------------------
 gr = np.linspace(*RRNG, 400)
 for lab, m, c in POPS:
     y = kde(d['R_birth'][m & fin], gr, lo=0.)
-    ax_t.plot(gr, y, color=c, lw=2.4, label=f'{lab} ({m.sum():,})')
+    ax_t.plot(gr, y, color=c, lw=2.4, label=lab)
     ax_t.axvline(np.nanmedian(d['R_birth'][m & fin]), color=c, lw=1.1)
 ax_t.set(ylim=(0, None), ylabel='density')
 ax_t.tick_params(labelbottom=False)
 ax_t.legend(loc='upper right', handlelength=1.5, borderpad=.25)
-ax_t.text(.025, .93, '(a)', transform=ax_t.transAxes, va='top', fontsize=16,
+ax_t.text(.025, .93, '(a)', transform=ax_t.transAxes, va='top', fontsize=20,
           fontweight='bold')
 
 # --- (c) [Fe/H] marginal ------------------------------------------------------
@@ -162,7 +166,7 @@ for lab, m, c in POPS:
     ax_r.axhline(np.nanmedian(d['feh'][m & fin]), color=c, lw=1.1)
 ax_r.set(xlim=(0, None), xlabel='density')
 ax_r.tick_params(labelleft=False)
-ax_r.text(.07, .05, '(c)', transform=ax_r.transAxes, fontsize=16, fontweight='bold')
+ax_r.text(.07, .05, '(c)', transform=ax_r.transAxes, fontsize=20, fontweight='bold')
 
 # --- (d) radial action --------------------------------------------------------
 gj = np.linspace(*JRNG, 500)
@@ -170,15 +174,15 @@ for lab, m, c in POPS:
     a = kde(Jr[m], gj, lo=0.)
     if a is not None:
         ax_b.plot(gj, a, color=c, lw=1.6, ls='--', alpha=.9,
-                  label=f'{lab}, all ({m.sum():,})')
+                  label=f'{lab}, all')
     b = kde(Jr[m & sun], gj, lo=0.)
     if b is not None:
         ax_b.plot(gj, b, color=c, lw=3.8,
-                  label=f'{lab}, solar neighbourhood ({(m & sun).sum():,})')
+                  label=f'{lab}, solar neighbourhood')
         ax_b.axvline(np.nanmedian(Jr[m & sun]), color=c, lw=1.1)
 ax_b.set(xlim=JRNG, ylim=(0, None), xlabel=r'$J_R$ [kpc km s$^{-1}$]', ylabel='density')
 ax_b.legend(loc='upper right', handlelength=2.0, borderpad=.3, labelspacing=.4, ncol=1)
-ax_b.text(.025, .95, '(d)', transform=ax_b.transAxes, va='top', fontsize=16,
+ax_b.text(.025, .95, '(d)', transform=ax_b.transAxes, va='top', fontsize=20,
           fontweight='bold')
 
 for ext in ('pdf', 'png'):

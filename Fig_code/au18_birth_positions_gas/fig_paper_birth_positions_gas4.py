@@ -1,9 +1,11 @@
-"""Publication figure: birth positions on the gas, four panels.
+"""Publication figure: birth positions on the gas at the merger, two panels.
 
-The four-panel layout and frame of au18_birth_positions (+-25 x +-18 kpc, one
-column per birth class, one row per snapshot), with the GAS surface density of
-that snapshot underneath in greyscale and, on the top row, contours enclosing 50
-and 90 per cent of the clean GS/E debris.
+The GS/E pericentre passage, one column per birth class.  Earlier versions of this
+figure carried a second row at t = 9.41 Gyr as a late-time control; that row is now
+left to the text, and the file name is kept so the manuscript reference does not
+move.  Frame +-25 x +-18 kpc, widened if the GS/E centroid falls outside it, with
+the GAS surface density of the snapshot underneath in greyscale and contours
+enclosing 50 and 90 per cent of the clean GS/E debris.
 
 What it is for: the halo-born stars at t = 4.99 Gyr are not sprinkled through the
 halo, they lie along the gas lane that bridges the host disc to the infalling
@@ -16,9 +18,8 @@ panel does not.
 
 Stars are drawn as scatter, not as a binned density, so that the gas underneath
 stays visible everywhere rather than only where stars are absent.  N is annotated
-per panel.  The gas scale is shared between the two panels of a row -- which is
-the comparison the figure asks the reader to make -- but not between rows, since
-the gas mass in the frame changes.
+per panel.  The gas scale is shared between the two panels -- which is the
+comparison the figure asks the reader to make.
 
 Writes Fig_paper/au18_birth_positions_gas4.pdf and .png.
 """
@@ -38,7 +39,7 @@ OUT = '/data/hz420-2/EoS_explore/Fig_paper'
 os.makedirs(OUT, exist_ok=True)
 CUT, ZCUT = 0.8, 1.5
 SNAP_A = int(sys.argv[1]) if len(sys.argv) > 1 else 72
-SNAPS = [(SNAP_A, 'during the merger'), (100, 'after the merger')]
+SNAPS = [(SNAP_A, 'during the merger')]
 XLIM, ZLIM = 25., 18.        # widened below if the GS/E lies outside them
 cG = '#8E24AA'
 
@@ -101,7 +102,7 @@ def in_frame(sn, ptype, cen, xd, yd, zd, rot=None, extra=()):
     return out
 
 
-fig, axes = plt.subplots(2, 2, figsize=(11.0, 8.4), sharex=True, sharey=True)
+fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.9), sharex=True, sharey=True)
 for row, (sn, when) in enumerate(SNAPS):
     k = int(np.flatnonzero(SN_ALL == sn)[0])
     t_lo, t_hi = T_ALL[k - 1], T_ALL[k]
@@ -150,7 +151,7 @@ for row, (sn, when) in enumerate(SNAPS):
 
     for col, (lab, m, colr, ms) in enumerate(
             [('disc-born', disc, cD, 2.2), ('halo-born', ~disc, cH, 3.6)]):
-        ax = axes[row, col]
+        ax = axes[col]
         gpc = ax.pcolormesh(xe, ze, G2.T, cmap=GREY, norm=LogNorm(vmin=gmin, vmax=gmax),
                             rasterized=True, zorder=0)
         # Alpha scaled to the sample size: low enough that overlapping markers
@@ -178,7 +179,7 @@ for row, (sn, when) in enumerate(SNAPS):
                     rotation=270, va='center', ha='left', fontsize=14)
         if col == 0:
             # lower right on the top row: the GS/E contour sits at x = -16..-6 kpc
-            cax = ax.inset_axes([.44 if row == 0 else .07, .085, .52, .030])
+            cax = ax.inset_axes([.44, .085, .52, .030])
             cb = fig.colorbar(gpc, cax=cax, orientation='horizontal')
             cb.ax.tick_params(labelsize=9.5, length=2.5, pad=1.5)
             cb.outline.set_linewidth(.7)
@@ -191,10 +192,9 @@ for row, (sn, when) in enumerate(SNAPS):
           f'gas scale {gmin:.2e}-{gmax:.2e}')
     del P, Gs; gc.collect()
 
-for ax in axes[1, :]:
+for ax in axes:
     ax.set_xlabel('$x$ [kpc]')
-for ax in axes[:, 0]:
-    ax.set_ylabel('$z$ [kpc]')
+axes[0].set_ylabel('$z$ [kpc]')
 fig.tight_layout(pad=.5, w_pad=.6, h_pad=.6)
 TAG = '' if SNAP_A == 72 else f'_snap{SNAP_A}'
 for ext in ('pdf', 'png'):
