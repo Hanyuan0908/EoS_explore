@@ -67,7 +67,7 @@ label_axes(ax[1], '[Fe/H]', '[Al/Fe]', 'Aluminium')
 h0, xe, ye = hist2d(cat['fe_h'][m['base_en']], cat['mg_fe'][m['base_en']], c.fehr2, c.mgfer2, c.nfeh2, c.nmg2)
 mean_al, xe, ye = stat2d(cat['fe_h'][m['base_en']], cat['mg_fe'][m['base_en']], cat['al_fe'][m['base_en']],
                          c.fehr2, c.mgfer2, c.nfeh2, c.nmg2, statistic='mean')
-im_mid = value_panel(ax[2], mean_al, xe, ye, -0.2, 0.27, mask=h0 <= 1, cmap='RdYlBu_r')
+im_mid = value_panel(ax[2], mean_al, xe, ye, -0.2, 0.3, mask=h0 <= 1, cmap='RdYlBu_r')
 im_mid.set_rasterized(True)
 cax = ax[2].inset_axes([0.12, 0.10, 0.56, 0.035])
 cb = fig.colorbar(im_mid, cax=cax, orientation='horizontal')
