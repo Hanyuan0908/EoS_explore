@@ -67,8 +67,11 @@ mpl.rcParams.update({
     'font.serif': ['Times New Roman', 'Nimbus Roman', 'Liberation Serif',
                    'STIXGeneral', 'DejaVu Serif'],
     'mathtext.fontset': 'stix',
-    'font.size': 13.5, 'axes.labelsize': 15,
-    'xtick.labelsize': 13, 'ytick.labelsize': 13, 'legend.fontsize': 12.5,
+    # House sizes x 1.26: at the width these figures are reproduced, the 15 pt
+    # house axis label renders small on the page.  Scaling every size by one
+    # factor keeps the internal proportions unchanged.
+    'font.size': 17, 'axes.labelsize': 18.5,
+    'xtick.labelsize': 16.5, 'ytick.labelsize': 16.5, 'legend.fontsize': 16,
     'axes.linewidth': 1.0, 'xtick.direction': 'in', 'ytick.direction': 'in',
     'xtick.top': True, 'ytick.right': True, 'legend.frameon': False,
     'xtick.major.size': 5, 'ytick.major.size': 5,
@@ -186,7 +189,7 @@ for i in range(len(FBINS) - 1):
     bb = dict(fc='white', ec='none', alpha=.85, pad=2.2)
     ax.text(.045, .955, f'${FBINS[i]:+.1f} < \\mathrm{{[Fe/H]}} < '
                         f'{FBINS[i+1]:+.1f}$', transform=ax.transAxes, va='top',
-            fontsize=12.5, bbox=bb, zorder=6)
+            fontsize=16, bbox=bb, zorder=6)
     if r != NROW - 1:
         ax.set_xticklabels([])
     else:
@@ -202,13 +205,13 @@ xcb = (LEFT + NCOL * PS + .34) / FW
 cb1 = fig.colorbar(sc, cax=fig.add_axes([xcb, (BOT + NROW * PS * .53) / FH,
                                          .17 / FW, NROW * PS * .45 / FH]))
 cb1.solids.set_alpha(1.)
-cb1.set_label('[N/Fe]', fontsize=14)
+cb1.set_label('[N/Fe]', fontsize=17.5)
 cb1.set_ticks([0., .05, .10, .15])
 cb2 = fig.colorbar(pcm, cax=fig.add_axes([xcb, (BOT + NROW * PS * .02) / FH,
                                           .17 / FW, NROW * PS * .45 / FH]))
-cb2.set_label(r'$\Sigma_{\rm gas}$ [M$_\odot$ kpc$^{-2}$]', fontsize=13)
+cb2.set_label(r'$\Sigma_{\rm gas}$ [M$_\odot$ kpc$^{-2}$]', fontsize=16.5)
 for cb in (cb1, cb2):
-    cb.ax.tick_params(labelsize=11.5, length=3)
+    cb.ax.tick_params(labelsize=14.5, length=3)
     cb.outline.set_linewidth(.8)
 
 for ext in ('pdf', 'png'):

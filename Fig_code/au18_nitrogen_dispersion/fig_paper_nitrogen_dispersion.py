@@ -64,8 +64,11 @@ mpl.rcParams.update({
     'font.serif': ['Times New Roman', 'Nimbus Roman', 'Liberation Serif',
                    'STIXGeneral', 'DejaVu Serif'],
     'mathtext.fontset': 'stix',
-    'font.size': 13.5, 'axes.labelsize': 15,
-    'xtick.labelsize': 13, 'ytick.labelsize': 13, 'legend.fontsize': 12.5,
+    # House sizes x 1.26: at the width these figures are reproduced, the 15 pt
+    # house axis label renders small on the page.  Scaling every size by one
+    # factor keeps the internal proportions unchanged.
+    'font.size': 17, 'axes.labelsize': 18.5,
+    'xtick.labelsize': 16.5, 'ytick.labelsize': 16.5, 'legend.fontsize': 16,
     'axes.linewidth': 1.0, 'xtick.direction': 'in', 'ytick.direction': 'in',
     'xtick.top': True, 'ytick.right': True, 'legend.frameon': False,
     'xtick.major.size': 5, 'ytick.major.size': 5,
@@ -193,12 +196,12 @@ for r0, c0, x0, z0 in ((R_SAT, cSAT, g2[0], g2[2]), (R_HOST, cHOST, 0., 0.)):
     ax.plot(r0 * np.cos(th) + x0, r0 * np.sin(th) + z0, color=c0, lw=2.0, zorder=4)
 bb = dict(fc='white', ec='none', alpha=.85, pad=1.8)
 ax.text(-13.5, -22.3, 'GS/E analogue', color=cSAT, ha='center', va='center',
-        fontsize=12.5, bbox=bb, zorder=5)
+        fontsize=16, bbox=bb, zorder=5)
 ax.text(0., R_HOST + 1.4, 'MW analogue', color=cHOST, ha='center', va='bottom',
-        fontsize=12.5, bbox=bb, zorder=5)
+        fontsize=16, bbox=bb, zorder=5)
 # led out to the empty lower right rather than sitting on the lane it names
 ax.annotate('bridge', xy=(-5.5, -6.8), xytext=(13.5, -17.5), color=cBR,
-            ha='center', va='center', fontsize=12.5, bbox=bb, zorder=5,
+            ha='center', va='center', fontsize=16, bbox=bb, zorder=5,
             arrowprops=dict(arrowstyle='-', color=cBR, lw=1.3,
                             shrinkA=2, shrinkB=2))
 ax.set(aspect='equal', xlim=(-W, W), ylim=(-W, W),
@@ -207,11 +210,11 @@ cax = ax.inset_axes([.545, .885, .41, .032])
 cb = fig.colorbar(sc, cax=cax, orientation='horizontal')
 cb.solids.set_alpha(1.)
 cb.set_ticks([0., .05, .10, .15])
-cb.ax.tick_params(labelsize=10, length=2.5, pad=1.5)
+cb.ax.tick_params(labelsize=13, length=2.5, pad=1.5)
 cb.outline.set_linewidth(.7)
-cax.set_title('[N/Fe]', fontsize=11, pad=3)
+cax.set_title('[N/Fe]', fontsize=14, pad=3)
 cax.title.set_bbox(bb)
-ax.text(.035, .965, '(a)', transform=ax.transAxes, va='top', fontsize=16,
+ax.text(.035, .965, '(a)', transform=ax.transAxes, va='top', fontsize=19.5,
         fontweight='bold')
 
 # ---- (b) the two birth classes
@@ -225,9 +228,9 @@ for lab, m, col in (('disc-born', disc & np.isfinite(nfe), cDISC),
     print(f'  (b) {lab:10s} ' + '  '.join(f'{v:.4f}' if np.isfinite(v) else '  --  '
                                           for v in sg))
 ax.set(xlabel='[Fe/H]', ylabel=r'$\sigma_{\rm [N/Fe]}$ [dex]',
-       xlim=(-1.05, .45), ylim=(0., .065))
+       xlim=(-1.05, .45), ylim=(.005, .07))
 ax.legend(loc='upper right', handlelength=1.6)
-ax.text(.035, .965, '(b)', transform=ax.transAxes, va='top', fontsize=16,
+ax.text(.035, .965, '(b)', transform=ax.transAxes, va='top', fontsize=19.5,
         fontweight='bold')
 
 # ---- (c) the halo-born class split by birth site
@@ -244,9 +247,10 @@ for lab, m, col in SITES:
     print(f'  (c) {lab:14s} ' + '  '.join(f'{v:.4f}' if np.isfinite(v) else '  --  '
                                           for v in sg))
 ax.set(xlabel='[Fe/H]', ylabel=r'$\sigma_{\rm [N/Fe]}$ [dex]',
-       xlim=(-1.05, .45), ylim=(0., .065))
-ax.legend(loc='upper right', handlelength=1.8, fontsize=11.5)
-ax.text(.035, .965, '(c)', transform=ax.transAxes, va='top', fontsize=16,
+       xlim=(-1.05, .45), ylim=(.005, .07))
+ax.legend(loc='upper right', handlelength=1.5, fontsize=13.5,
+          labelspacing=.3, borderaxespad=.4)
+ax.text(.035, .965, '(c)', transform=ax.transAxes, va='top', fontsize=19.5,
         fontweight='bold')
 
 for ext in ('pdf', 'png'):
