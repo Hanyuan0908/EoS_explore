@@ -208,7 +208,13 @@ Two things to state in the caption:
 
 The chain is the `au18_birth_orbits` one (`prep_birth_actions.py`, `prep_zmax.py`
 and the potentials behind them, all symlinked here); the figure script reads
-snapshot 72 directly for `GFM_Metals`, plus `out/gse_clean_ids.npy`.  Runs in a
+snapshot 72 directly for `GFM_Metals`, plus `out/gse_clean_ids.npy`.
+
+`au18_frame.py` is kept here as a REAL COPY, not a symlink into `../../auriga/`.
+The `main` branch tracks only `Fig_paper` and `Fig_code`, so a link reaching
+outside `Fig_code` resolves on this branch and dangles on `main` -- which is what
+has happened to `Fig_code/FINDINGS.md` and to `au18_gas_metallicity/orbit_tools.py`.
+Anything `Fig_code` needs must live inside `Fig_code`.  Runs in a
 few minutes with the local `astro312`.
 
 The diagnostics behind it, none of which are paper figures, are
@@ -254,7 +260,8 @@ midpoint; and Auriga's [N/Fe] range here is a tenth of what separates the Milky
 Way's alpha sequences, so these are model ISM inhomogeneities only.  The gas scale
 is stretched to the disc-to-lane transition, not to the full range of the frame.
 
-Same chain and environment as `au18_nitrogen_dispersion`.
+Same chain and environment as `au18_nitrogen_dispersion`; `au18_frame.py` is a
+symlink into that directory, which holds the real copy.
 
 ---
 
