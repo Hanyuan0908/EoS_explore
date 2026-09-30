@@ -154,6 +154,117 @@ addition, not a replacement.
 
 ---
 
+## `au18_nitrogen_dispersion/` -> `Fig_paper/au18_nitrogen_dispersion.pdf`
+
+Chemical inhomogeneity of the two birth classes at the GS/E pericentre, and where
+it comes from.  Stars formed in the snapshot-72 window (t_form = 4.83-4.99 Gyr),
+split by the same criterion as `au18_birth_orbits`.  (a) the halo-born stars
+edge-on, coloured by [N/Fe], with the two apertures drawn; (b) sigma_[N/Fe]
+against [Fe/H], disc-born against halo-born; (c) the halo-born curve split by
+birth site.
+
+Three apertures, measured in the frame of `au18_birth_positions_gas4` with the
+azimuth pinned by `au18_frame.align_azimuth`:
+
+    GS/E analogue   |r - r_GSE| <  6 kpc   (r_GSE = clean-debris centroid)
+    MW analogue     |r - r_GSE| >= 6 and |r| < 8 kpc
+    bridge          everything else
+
+Counts, which a rerun must reproduce: 26,064 disc-born and 12,608 halo-born, the
+latter splitting 2,042 / 6,886 / 3,680 into GS/E analogue / bridge / MW analogue.
+The same 26,064 and 12,608 appear on `au18_birth_positions_gas4`, so they are the
+fastest check that the sample is right.
+
+A bin is drawn only where it holds **150 stars**; below that the bootstrap band is
+wider than the differences the figure exists to show.  That drops the
+[Fe/H] < -1.0 bin from every curve, the GS/E and MW analogues below -0.8, and
+everything above +0.2 except the two halo-born curves.
+
+Panels (b) and (c) are 6:4 and share an axes height with (a), which is square
+because `aspect='equal'` over a 50 x 50 kpc frame.  The three rects are placed
+explicitly in inches -- `tight_layout` will not honour a mixed-aspect row, and
+leaves (a) shrunken inside an oversized slot.
+
+**Fixed [Fe/H] bins are not cosmetic.**  The two classes differ by 0.61 dex in
+median metallicity and sigma_[N/Fe] runs steeply with [Fe/H], so comparing them
+unbinned returns that gradient as if it were a difference between the classes.
+
+The result: the dispersion belongs to the BRIDGE, not to the halo orbit.
+Halo-born stars formed inside either compact aperture sit near 0.016 dex at every
+metallicity; only those formed in the lane reach 0.057.  Panel (a) shows why --
+GS/E-like and host-like gas occupy opposite ends of the lane and have not mixed.
+
+Two things to state in the caption:
+
+- **The colour scale in (a) is diverging about [N/Fe] = 0.09**, which is the
+  measured divider between the two chemical branches, not an arbitrary midpoint.
+  cmasher's `iceburn` was tried and rejected: its black midpoint swallowed whole
+  panels, since most of this sample sits near the divider.
+- **Auriga's abundances are not the Milky Way's.**  Every dispersion in the figure
+  is 0.01-0.06 dex, against the ~0.3 dex separating the MW's two alpha sequences.
+  These are ISM inhomogeneities within the model and must not be set beside an
+  observed sigma_[N/Fe].  The [Mg/Fe] zero point in this run is offset the same
+  way (see `auriga/ana_eos_mgfe_feh.py`).
+
+The chain is the `au18_birth_orbits` one (`prep_birth_actions.py`, `prep_zmax.py`
+and the potentials behind them, all symlinked here); the figure script reads
+snapshot 72 directly for `GFM_Metals`, plus `out/gse_clean_ids.npy`.
+
+`au18_frame.py` is kept here as a REAL COPY, not a symlink into `../../auriga/`.
+The `main` branch tracks only `Fig_paper` and `Fig_code`, so a link reaching
+outside `Fig_code` resolves on this branch and dangles on `main` -- which is what
+has happened to `Fig_code/FINDINGS.md` and to `au18_gas_metallicity/orbit_tools.py`.
+Anything `Fig_code` needs must live inside `Fig_code`.  Runs in a
+few minutes with the local `astro312`.
+
+The diagnostics behind it, none of which are paper figures, are
+`auriga/diag_nfe_dispersion_origin.py` (site decomposition and the provenance
+comparison against the clean GS/E debris), `diag_nfe_bridge_trend.py` (the
+2-Gaussian decomposition of the bridge trend), `diag_nfe_bimodality.py` (what the
+two components are, element by element) and `diag_nfe_map_feh.py` (the same map
+as panel (a), split into metallicity bins).
+
+---
+
+## `au18_nitrogen_map/` -> `Fig_paper/au18_nitrogen_map.pdf`
+
+The companion map to `au18_nitrogen_dispersion`: the same halo-born sample, one
+panel per 0.2 dex bin of [Fe/H], edge-on, coloured by [N/Fe] over the snapshot-72
+gas surface density.  Shows *why* the dispersion belongs to the bridge -- in every
+bin where both compositions exist they occupy opposite ends of the lane and have
+not mixed.
+
+Panels abut exactly (shared axes, labelled once) and carry no annotation but the
+metallicity bin.  The counts, which explain the differing opacity and belong in
+the caption, are, from the most metal-poor bin up:
+
+    112, 1,178, 2,435, 3,777, 2,844, 1,419, 637, 184
+
+**The 150-star threshold of `au18_nitrogen_dispersion` is deliberately NOT applied
+here.**  That cut exists because a dispersion from a hundred stars has a bootstrap
+band wider than the effect; a map of a hundred positions is perfectly legible, and
+the sparse [Fe/H] < -1.0 panel is the one showing a single composition filling the
+whole frame, which is the point the figure makes.
+
+Opacity is `clip(900/N, 0.20, 0.95)` per panel rather than a fixed value: N spans
+a factor of 34 across the bins, and at one opacity the crowded intermediate panels
+saturate into a block that hides the interface between the two streams.
+
+The rects are placed explicitly in inches.  With `wspace = hspace = 0` and
+`aspect='equal'`, any mismatch between slot shape and data shape reopens the gaps,
+and no gridspec setting fixes it.
+
+Caption must state the same two things as the companion figure: the [N/Fe] scale
+is diverging **about the measured branch divider at 0.09**, not an arbitrary
+midpoint; and Auriga's [N/Fe] range here is a tenth of what separates the Milky
+Way's alpha sequences, so these are model ISM inhomogeneities only.  The gas scale
+is stretched to the disc-to-lane transition, not to the full range of the frame.
+
+Same chain and environment as `au18_nitrogen_dispersion`; `au18_frame.py` is a
+symlink into that directory, which holds the real copy.
+
+---
+
 # Observational figures (APOGEE) — made on the Mac; see `CONVENTIONS_observational.md`
 
 ## `obs_mg_al_meanal/` -> `Fig_paper/obs_mg_al_meanal.pdf`
