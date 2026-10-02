@@ -28,11 +28,14 @@ T_APO, T_PERI = 3.25, 5.0
 T_COAL_LO, T_COAL_HI = 5.3, 5.6
 T_WIN = (4.99, 6.54)
 cD, cH, cM = '#2166ac', '#b2182b', 'goldenrod'
+cB = '#e66101'                             # the burst window, as in EPOCHS
 # Quiet windows either side of the merger, and the burst itself.  The burst
 # window is narrow on purpose: the halo-born excess in panel (b) lasts only
 # ~0.5 Gyr, and averaging over the whole 4.99-6.54 Eos window dilutes it away.
+# The upper edge is 5.5, not 5.7: it now closes at the end of the coalescence
+# band rather than 0.1 Gyr past it, so the window is the merger event itself.
 EPOCHS = [('quiet before 3.5-4.7', 3.5, 4.7, '#7b3294'),
-          ('burst        4.9-5.7', 4.9, 5.7, '#e66101'),
+          ('burst        4.9-5.5', 4.9, 5.5, '#e66101'),
           ('quiet after  6.6-8.0', 6.6, 8.0, '#018571')]
 
 b = np.load(C.OUT_DIR + '/birth_orbits_agama.npz')
@@ -96,17 +99,39 @@ print(f'halo-born SFR rises by x{sfr_h[pk] / sfr_h[q].mean():.2f}, '
 fig, axes = plt.subplots(2, 2, figsize=(13.6, 9.0))
 
 
-def mark(ax, label=False):
+# The burst window that the quoted masses are integrated over.  Taken from
+# EPOCHS so the lines on the figure and the numbers in the text cannot drift
+# apart, and drawn as edges rather than another shaded band because the
+# coalescence band already sits inside it.
+BURST = (EPOCHS[1][1], EPOCHS[1][2])
+bm = (tf >= BURST[0]) & (tf < BURST[1])
+M_H, M_D = mi[bm & halo].sum(), mi[bm & disc].sum()
+print(f'\nburst window {BURST[0]}-{BURST[1]} Gyr: {bm.sum():,} stars, '
+      f'M_halo = {M_H:.3e}, M_disc = {M_D:.3e}, '
+      f'halo = {100 * M_H / (M_H + M_D):.1f} per cent')
+
+
+def sci(x, nd=2):
+    e = int(np.floor(np.log10(x)))
+    return f'{x / 10 ** e:.{nd}f}\\times10^{{{e}}}'
+
+
+def mark(ax, label=False, burst=False):
     ax.axvspan(*T_WIN, color=cM, alpha=.10, lw=0)
     ax.axvspan(T_COAL_LO, T_COAL_HI, color=cM, alpha=.45, lw=0,
                label='GS/E coalescence' if label else None)
     ax.axvline(T_PERI, color=cM, ls='--', lw=1.5,
                label='pericentre plunge' if label else None)
+    if burst:
+        for i, x in enumerate(BURST):
+            ax.axvline(x, color=cB, lw=1.6, zorder=6,
+                       label=(f'burst window {BURST[0]}$-${BURST[1]} Gyr'
+                              if (label and i == 0) else None))
 
 
 # (a) the history, split by birth orbit
 ax = axes[0, 0]
-mark(ax, label=True)
+mark(ax, label=True, burst=True)
 ax.fill_between(ctr, 0, sfr_h, step='mid', color=cH, alpha=.55, lw=0,
                 label='born on halo orbits ($\\epsilon<0.5$)')
 ax.fill_between(ctr, sfr_h, sfr_a, step='mid', color=cD, alpha=.45, lw=0,
@@ -117,10 +142,17 @@ ax.set(xlim=(tf.min(), C.T0_GYR), ylim=(0, 1.1 * np.nanmax(sfr_a)),
        xlabel='cosmic time [Gyr]', ylabel='SFR [M$_\\odot$ yr$^{-1}$]',
        title='(a) Star formation split by the orbit the star was born on')
 ax.legend(fontsize=8.5, loc='upper right')
+# the masses quoted in discussion, written where the window they belong to is drawn
+ax.text(.025, .96,
+        f'burst window {BURST[0]}$-${BURST[1]} Gyr, mass formed:\n'
+        f'   halo orbits  ${sci(M_H)}$ M$_\\odot$  ({100 * M_H / (M_H + M_D):.0f} %)\n'
+        f'   disc orbits  ${sci(M_D)}$ M$_\\odot$  ({100 * M_D / (M_H + M_D):.0f} %)',
+        transform=ax.transAxes, va='top', fontsize=9,
+        bbox=dict(fc='white', ec=cB, lw=.9, alpha=.9, pad=3.5))
 
 # (b) does the burst change the mix, or just the rate?
 ax = axes[0, 1]
-mark(ax)
+mark(ax, burst=True)
 ax.plot(ctr, 100 * fh, color=cH, lw=2.2)
 ax.set(xlim=(tf.min(), C.T0_GYR), ylim=(0, None), xlabel='cosmic time [Gyr]',
        ylabel='per cent of newborn mass on halo orbits',

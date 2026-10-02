@@ -18,6 +18,13 @@ taken on faith:
 plus the enclosed masses, r90, and the cold gas beyond the aperture (a tracer of
 the satellite arriving).
 
+Also records, per snapshot, the azimuthally averaged surface-density profile
+Sigma(R) of the star-forming gas and of the stars, and the exponential scale
+length R_d fitted to it -- the counterpart of the same addition in
+../auriga/prep_gas_disc_au18.py, so the two simulations can be compared in R_d as
+well as in R_1/2.  The profiles themselves are saved, not just the fitted
+numbers, so the fit range can be changed without another pass.
+
 Writes out/gas_disc_evolution.npz.
 """
 import glob, os, sys
@@ -46,8 +53,36 @@ T_AGERTZ, N_AGERTZ = 1e4, 1.0
 T_GASOLINE, N_GASOLINE = 1.5e4, 0.1
 MSUN, KPC, XH, MP = 1.989e33, 3.0857e21, 0.76, 1.6726219e-24
 RMAX, ZMAX = 30., 3.
+# Sigma(R) bins and the R_d fit range, in units of that component's own R_1/2.
+# Identical to the Auriga side so the two R_d are the same measurement; see
+# ../auriga/prep_gas_disc_au18.py for why the range floats with R_1/2 instead of
+# being fixed in kpc.
+RBINS = np.arange(0., 30.01, .25)
+FIT_LO, FIT_HI = 0.5, 2.5
 VPHI_COROT = 50.
 os.makedirs(G.OUT_DIR, exist_ok=True)
+
+
+def sigma_profile(R, m, edges=RBINS):
+    """Azimuthally averaged surface density [Msun/kpc^2] in fixed radial bins."""
+    h = np.histogram(R, bins=edges, weights=m)[0]
+    return h / (np.pi * (edges[1:] ** 2 - edges[:-1] ** 2))
+
+
+def exp_scale(sig, rh, edges=RBINS, lo=FIT_LO, hi=FIT_HI):
+    """Exponential scale length from a straight-line fit to ln Sigma(R).
+
+    Fitted over [lo, hi] x R_1/2 and only where Sigma > 0.  NaN from fewer than
+    five usable bins, or from a rising profile, which is not a disc.
+    """
+    if not np.isfinite(rh) or rh <= 0:
+        return np.nan
+    ctr = .5 * (edges[:-1] + edges[1:])
+    ok = (ctr > lo * rh) & (ctr < hi * rh) & (sig > 0)
+    if ok.sum() < 5:
+        return np.nan
+    slope = np.polyfit(ctr[ok], np.log(sig[ok]), 1)[0]
+    return float(-1. / slope) if slope < 0 else np.nan
 
 
 def half_mass(R, m, frac=0.5):
@@ -66,7 +101,8 @@ rec = {k: [] for k in ('time', 'rhalf_cold', 'rhalf_cool', 'rhalf_corot', 'rhalf
                        'vphi_cold', 'zabs_cold',
                        'rhalf_sf', 'm_sf', 'r90_sf',
                        'rhalf_agertz', 'm_agertz', 'r90_agertz',
-                       'rhalf_gasoline', 'm_gasoline')}
+                       'rhalf_gasoline', 'm_gasoline', 'rd_sf', 'rd_star')}
+prof = {'sigma_sf': [], 'sigma_star': []}
 for path in files:
     f = pynbody.load(path)
     f.physical_units()
@@ -123,8 +159,14 @@ for path in files:
     rec['rhalf_gasoline'].append(half_mass(Rg[gasoline], gm[gasoline]))
     rec['m_gasoline'].append(gm[gasoline].sum())
     rec['zabs_cold'].append(float(np.median(np.abs(zg[cold]))) if cold.sum() > 20 else np.nan)
+
+    ssf = sigma_profile(Rg[sfsel], gm[sfsel])
+    sst = sigma_profile(Rs[star], sm[star])
+    prof['sigma_sf'].append(ssf); prof['sigma_star'].append(sst)
+    rec['rd_sf'].append(exp_scale(ssf, rec['rhalf_sf'][-1]))
+    rec['rd_star'].append(exp_scale(sst, rec['rhalf_star'][-1]))
     print(f"  t={rec['time'][-1]:5.2f}  R_half(cold)={rec['rhalf_cold'][-1]:6.2f} kpc  "
-          f"R_half(SF)={rec['rhalf_sf'][-1]:6.2f}  "
+          f"R_half(SF)={rec['rhalf_sf'][-1]:6.2f}  R_d(SF)={rec['rd_sf'][-1]:6.2f}  "
           f"M_SF={rec['m_sf'][-1]:.2e}", flush=True)
     del f
 
@@ -137,5 +179,8 @@ edges = np.arange(0, 10.05, .1)
 sfr = np.histogram(tf, bins=edges, weights=mi)[0] / (.1 * 1e9)   # Msol/yr
 
 np.savez(G.OUT_DIR + '/gas_disc_evolution.npz',
-         sfr_edges=edges, sfr=sfr, **{k: np.array(v) for k, v in rec.items()})
+         sfr_edges=edges, sfr=sfr, rbins=RBINS,
+         fit_range=np.array([FIT_LO, FIT_HI]),
+         **{k: np.array(v) for k, v in prof.items()},
+         **{k: np.array(v) for k, v in rec.items()})
 print('\nsaved', G.OUT_DIR + '/gas_disc_evolution.npz')

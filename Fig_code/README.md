@@ -265,6 +265,46 @@ symlink into that directory, which holds the real copy.
 
 ---
 
+## `au18_birth_classes/` -> `Fig_paper/au18_birth_classes.pdf`
+
+`au18_birth_positions_gas4` and `au18_birth_orbits` merged into one four-panel
+figure, so the spatial and temporal halves of the birth-class result sit together.
+(a), (b) the two classes at the GS/E pericentre over the gas surface density, with
+the clean-debris contours; (c) the star-formation history split by class;
+(d) their ratio.  Same classification as `au18_birth_orbits`.
+
+Counts a rerun must reproduce: 1,932,134 in-situ stars with a birth orbit, 8.6 per
+cent halo-born; 26,064 disc-born and 12,608 halo-born in the snapshot-72 window;
+peak halo/disc SFR ratio 0.46 at t = 4.96 Gyr.
+
+**Dropped from the parent figures**, by request: the eps-against-time map and the
+eps distributions by epoch (both carried the classification, which this figure
+takes as given), and the rotated epoch label on the right edge of the maps, which
+made the top panels a different width from the bottom ones.  The epoch is stated
+inside panel (a) instead.  The parent figures are kept; this is an addition.
+
+**The panel rectangles are placed explicitly in inches.**  The top row is forced
+to `aspect='equal'` and the bottom row is not; `tight_layout` will not keep a
+mixed row aligned -- it shrinks the equal-aspect axes inside their slot and
+centres them, which is the misalignment this figure exists to avoid.  The same
+trap is recorded under `au18_nitrogen_map`.
+
+Carried over from the parents and still true here: the SFR kernel width `BW_T` is
+a Gaussian **sigma**, not a bin width -- 0.15 would oversmooth the narrow
+halo-born spike and drag the panel-(d) ratio down by a third; and the scatter
+opacity in (a)/(b) is scaled to each panel's N, which differ by 2x.
+
+`orbit_tools.py` and `au18_frame.py` are kept inside `Fig_code` (a real copy here
+and a link to `au18_nitrogen_dispersion` respectively) rather than linked out to
+`../../`, because `main` tracks only `Fig_paper` and `Fig_code` and an outward
+link dangles there.
+
+Chain and environment as `au18_birth_orbits`; the figure script additionally reads
+snapshot 72 directly for the maps.  A run takes a few minutes with the local
+`astro312`.
+
+---
+
 # Observational figures (APOGEE) — made on the Mac; see `CONVENTIONS_observational.md`
 
 ## `obs_mg_al_meanal/` -> `Fig_paper/obs_mg_al_meanal.pdf`
