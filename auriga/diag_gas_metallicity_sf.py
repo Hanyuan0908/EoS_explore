@@ -43,6 +43,13 @@ principle project an unrelated star-forming galaxy into the frame.  Nothing in
 these three snapshots looks like that, but the possibility is why the totals
 above are quoted inside 50 kpc of the host rather than read off the map.
 
+Three panels: (a) the star-forming gas surface density, (b) its mass-weighted
+mean [Fe/H], (c) the star-formation rate surface density, from the code's own
+StarFormationRate summed per pixel.  (c) is the weighting (b) should be read
+against: it says where the gas in (b) is actually turning into stars, so a
+chemically distinctive region that forms nothing cannot be mistaken for one that
+is setting the composition of a new population.
+
 Writes figures/au18_gas_metallicity_sf_snap<NN>.png -- figures/, not Fig_paper/.
 """
 import gc, os, sys
@@ -62,6 +69,7 @@ os.makedirs(OUT, exist_ok=True)
 SNAP = int(sys.argv[1]) if len(sys.argv) > 1 else 72
 VMIN, VMAX = -0.7, 0.0                  # fixed across snapshots, as in the all-gas version
 SIG_LO, SIG_HI = 1e6, 1e9
+SFR_LO, SFR_HI = 1e-4, 1e0      # fixed across snapshots, like the others
 NB, MMIN = 240, 1e5
 R_CORE, R_AP, R_WAKE = 3.0, 6.0, 15.0
 
@@ -154,7 +162,7 @@ for nm, m in (('core      < 3 kpc', dg < R_CORE),
           f'{gm[a_].sum():>10.3e} {wmed(feh[a_], gm[a_]):>+11.3f}')
 
 ins = SF & (np.abs(gp[:, 0]) < XLIM) & (np.abs(gp[:, 2]) < ZLIM)
-gp, gm, feh = gp[ins], gm[ins], feh[ins]
+gp, gm, feh, sfr = gp[ins], gm[ins], feh[ins], sfr[ins]
 fin = np.isfinite(feh)
 rng = [[-XLIM, XLIM], [-ZLIM, ZLIM]]
 W, xe, ze = np.histogram2d(gp[:, 0], gp[:, 2], bins=NB, range=rng, weights=gm)
@@ -164,6 +172,14 @@ num = np.histogram2d(gp[fin, 0], gp[fin, 2], bins=NB, range=rng,
 M = np.where(den > MMIN, num / np.where(den > 0, den, 1), np.nan)
 AREA = float((xe[1] - xe[0]) * (ze[1] - ze[0]))
 SIG = np.where(W > 0, W / AREA, np.nan)
+# Sigma_SFR: the code's own StarFormationRate summed per pixel.  This is the
+# quantity the [Fe/H] map should be read against -- the metallicity of gas that
+# is forming stars NOW, weighted by how fast it is doing so.
+RS = np.histogram2d(gp[:, 0], gp[:, 2], bins=NB, range=rng, weights=sfr)[0]
+SFRD = np.where(RS > 0, RS / AREA, np.nan)
+print(f'  Sigma_SFR 50/90/99/99.9 percentile: '
+      + ', '.join(f'{v:.3g}' for v in np.nanpercentile(SFRD, [50, 90, 99, 99.9]))
+      + ' Msun/yr/kpc^2')
 print(f'  pixels with SF gas: {100 * np.isfinite(SIG).mean():.2f} %; '
       f'with a drawn [Fe/H]: {100 * np.isfinite(M).mean():.2f} % '
       f'(holding {100 * den[np.isfinite(M)].sum() / den.sum():.1f} % of the SF gas)')
@@ -173,13 +189,15 @@ FW = 7.8
 AXL, AXW = .115, .715
 axw_in = FW * AXW
 axh_in = axw_in * ZLIM / XLIM
-FH = 2 * axh_in + 1.02
+NP = 3
+FH = NP * axh_in + 1.02
 fig = plt.figure(figsize=(FW, FH))
 b0, h = .055 * (9.8 / FH), axh_in / FH
-axes = [fig.add_axes([AXL, b0 + h, AXW, h]), fig.add_axes([AXL, b0, AXW, h])]
+axes = [fig.add_axes([AXL, b0 + (NP - 1 - i) * h, AXW, h]) for i in range(NP)]
 GAP = .012
-cax_a = fig.add_axes([AXL + AXW + .018, b0 + h + GAP, .026, h - GAP])
-cax_b = fig.add_axes([AXL + AXW + .018, b0, .026, h - GAP])
+caxes = [fig.add_axes([AXL + AXW + .018, b0 + (NP - 1 - i) * h + (GAP if i < NP - 1 else 0),
+                       .026, h - GAP]) for i in range(NP)]
+cax_a, cax_b, cax_c = caxes
 
 ax = axes[0]
 im = ax.pcolormesh(xe, ze, SIG.T, cmap='Greys',
@@ -208,12 +226,26 @@ ax.plot([0, gc_[0]], [0, gc_[2]], color='w', ls='--', lw=1.8, alpha=.9)
 ax.text(.03, .965, '(b)', transform=ax.transAxes, va='top', fontsize=16,
         fontweight='bold')
 
+ax = axes[2]
+im = ax.pcolormesh(xe, ze, SFRD.T, cmap='magma_r',
+                   norm=LogNorm(vmin=SFR_LO, vmax=SFR_HI), rasterized=True)
+cb = fig.colorbar(im, cax=cax_c)
+cb.set_label(r'$\Sigma_{\rm SFR}$ [M$_\odot$ yr$^{-1}$ kpc$^{-2}$]')
+OT.density_contours(ax, G[:, 0], G[:, 2], rng, '#1565C0',
+                    levels=(0.9, 0.5), bins=70, smooth=1.6, lw=2.2)
+ax.plot([0, gc_[0]], [0, gc_[2]], color='#1565C0', ls='--', lw=1.8, alpha=.9)
+ax.text(.03, .965, '(c)', transform=ax.transAxes, va='top', fontsize=16,
+        fontweight='bold')
+
 for a_ in axes:
     a_.set(aspect='equal', xlim=(-XLIM, XLIM), ylim=(-ZLIM, ZLIM), ylabel='$z$ [kpc]')
-axes[0].tick_params(labelbottom=False)
-axes[1].set_xlabel('$x$ [kpc]')
-keep = [t for t in axes[0].get_yticks() if -ZLIM + 1 < t < ZLIM - 1]
-axes[0].set_yticks(keep); axes[0].set_ylim(-ZLIM, ZLIM)
+for a_ in axes[:-1]:
+    a_.tick_params(labelbottom=False)
+axes[-1].set_xlabel('$x$ [kpc]')
+# drop the tick sitting on each shared edge, where the panel below already has one
+for a_ in axes[:-1]:
+    keep = [t for t in a_.get_yticks() if -ZLIM + 1 < t < ZLIM - 1]
+    a_.set_yticks(keep); a_.set_ylim(-ZLIM, ZLIM)
 f = f'{OUT}/au18_gas_metallicity_sf_snap{SNAP}.png'
 fig.savefig(f, bbox_inches='tight')
 print(f'\nsaved {f}')
