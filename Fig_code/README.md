@@ -154,6 +154,210 @@ addition, not a replacement.
 
 ---
 
+## `au18_gas_metallicity/` -> `Fig_paper/au18_gas_metallicity.pdf`
+
+The gas at the GS/E pericentre (snapshot 72, t = 4.99 Gyr), edge-on: (a) surface
+density, showing the lane that joins the host disc to the satellite, and (b)
+mass-weighted mean gas [Fe/H] in the same pixels.  The point is that the lane is
+the host's gas on a metallicity gradient rather than a second reservoir --
+[Fe/H] falls continuously along it with no discontinuity, while every [X/Fe] is
+flat to within 0.05 dex (`diag_gas_chemistry_snap72.py`).
+
+| script | writes |
+|---|---|
+| `diag_gas_chemistry_snap72.py` | `out/gas_chem_maps_snap72_v4.npz` -- the maps, and the region table |
+| `diag_lane_ridge.py` | `out/lane_ridge_snap72.npz` -- the traced lane centreline |
+| `lane_path.py` | loads that path and builds the lane mask from it |
+| `fig_paper_gas_metallicity.py` | **the figure**, PDF + PNG |
+
+**THE FIGURE READ A STALE CACHE, AND THE STALENESS WAS A FRAME BUG.**  It loaded
+`gas_chem_maps_snap72_v3.npz`, built before the azimuth alignment.  In that frame
+the GS/E sits 8.2 kpc out of the projection plane (|y|/r = 0.61), so the x-z view
+put the satellite at 10.7 kpc when its in-plane distance is 13.5 -- a 21 per cent
+foreshortening of the satellite and of the lane.  `CONVENTIONS.md` lists this
+exact failure ("edge-on views need the azimuth pinned").  The cost was larger
+than a wrong length: the projection smeared the lane into two apparent filaments
+4 kpc apart, and a good deal of machinery was built to decide between them before
+the frame was checked.  **A version-bumped cache file name is not a safe default
+to keep reading; check which version the current script writes.**
+
+**The lane is traced, not assumed.**  `diag_lane_ridge.py` measures it.  Two
+structures run from the disc towards the satellite and must be separated:
+
+| | the lane | the disc-side structure |
+|---|---|---|
+| width | narrow, ~2 kpc crest | broad |
+| x | -9.4 at z = -11 to -8.6 at z = -3 | ~ -5.5 |
+| log Sigma at z = -2 | 8.1 | **8.34** -- the brighter of the two |
+| [Fe/H] | the maximum at every height, -0.37 to -0.10 | ~0.2 dex lower |
+
+Because the second is brighter, every estimator built on Sigma finds it: a
+density-weighted centroid converges onto it, and so does a path maximising total
+log Sigma.  What separates them is that the lane is NARROW, so the score is
+ridgeness, `-d2(log Sigma)/dx2` on a ~1 kpc scale.
+
+Even on ridgeness the disc-side structure wins the INTEGRATED score, so a freely
+fitted curve still goes there.  What makes the lane the lane is a boundary
+condition, not a score: it is the structure that reaches the satellite.  The
+curve is therefore **anchored** at the GS/E end and only its shape above that is
+fitted.
+
+**The centreline is a cubic in z.**  An earlier version walked slice to slice
+under a penalty on lateral travel (dynamic programming).  That is the wrong
+regularisation: it charges for a steady tilt exactly as for a wiggle, and the
+lane IS steadily tilted -- it runs from x = -9.4 at the satellite to -4.1 at the
+disc.  Stiff enough to block the jump to the other structure, it was also stiff
+enough to block the tilt, so the line ran vertically and left the lane near the
+disc, drawn across gas that is not there.  A low-order polynomial separates the
+two: smooth by construction, free to tilt and bend, with the order setting the
+stiffness.
+
+**How it is checked.**  The curve is fitted on geometry alone and never sees the
+metallicity; it is then compared with the per-slice [Fe/H] maximum.  Median
+offset 0.43 kpc for the cubic, 0.60 for a parabola, 1.79 for a straight line --
+which is also the degree sensitivity, printed by the script.  That agreement, not
+parameter stability, is what the result rests on.
+
+The path starts 0.5 kpc above the top of the inner GS/E debris contour -- there
+is almost no gas inside it, so a line drawn across it marks nothing -- and runs
+to z = -0.5, into the host's gas disc, so the lane is drawn joining the two
+objects it joins.
+
+**The drawn line and the quoted lane numbers are the same object.**  This figure
+and `diag_gas_chemistry_snap72.py` both take the mask from `lane_path.py`.  The
+mask radius is 3.5 kpc, which matches the lane's measured transverse FWHM of
+6.1 kpc; the median still moves with it, so quote the radius with the number.
+
+NO REGION LABELS ON THE MAP, deliberately.  An earlier version annotated a median
+[Fe/H] per region; those were unweighted medians over masks holding far more faint
+pixels than bright ones, so the disc read -0.29 against a visibly ~0.0 core.  The
+numbers were right for their masks and wrong for what the eye compares them
+against.  Panel (b) blanks pixels below 1.5e7 Msun/kpc^2 (33.2 per cent of
+pixels, holding 76.0 per cent of the gas).
+
+`viridis`, not a diverging map: [Fe/H] has no meaningful midpoint.
+
+---
+
+## `au18_gas_metallicity_sf/` -> `Fig_paper/au18_gas_metallicity_sf.pdf`
+
+The figure above, panel for panel, restricted to **star-forming gas**.  Same
+snapshot, same frame, same grid, same traced lane, so the two can be laid side by
+side.
+
+| script | writes |
+|---|---|
+| `diag_gas_metallicity_sf.py` | `out/gas_sf_maps_snap72.npz` -- the maps (and its own 3-panel diagnostic, which adds Sigma_SFR) |
+| `diag_lane_ridge.py`, `lane_path.py` | the lane centreline and mask, shared with the all-gas figure |
+| `fig_paper_gas_metallicity_sf.py` | **the figure**, PDF + PNG |
+
+**Why both exist.**  60 per cent of the gas within 50 kpc of the host is not
+star-forming, and it is the diffuse metal-poor component, so the all-gas map
+averages the lane together with a reservoir that will never make a star.  This
+one shows only the gas whose composition the halo-born population will inherit.
+Restricting to it does not reveal a second reservoir: disc / lane / GS/E go
+-0.19 / -0.41 / -0.57 against -0.27 / -0.44 / -0.59 for all gas -- everything
+shifts up by ~0.03-0.08 dex and the ordering and the gradient are unchanged.
+
+**Star-forming = Auriga's own `StarFormationRate > 0` flag**, the definition
+`prep_gas_disc_au18.py` uses.  Grand et al. (2017) quote n_H > 0.13 cm^-3; the
+minimum density among flagged cells measured in this run is 0.107 cm^-3,
+consistent once the fixed X_H = 0.76 behind that estimate is allowed for.  **Not
+a temperature cut**, deliberately: Auriga puts star-forming gas on the Springel &
+Hernquist effective equation of state, so its InternalEnergy is a pressure floor,
+not a temperature, and only 66 per cent of SF cells at z = 0 fall below 3e4 K.
+
+Two threshold changes against the all-gas figure, both because SF gas is dense by
+construction: **no surface-density blanking**, and a pixel draws its [Fe/H] once
+it holds 1e5 Msun rather than 5e5.  20.7 per cent of pixels qualify and they hold
+99.2 per cent of the star-forming gas.
+
+**The lane drawn here is the one traced on the ALL-gas map.**  Star-forming gas
+is clumpy, so its transverse profile is a chain of clumps rather than a smooth
+crest: `diag_lane_ridge.py 72 sf` traces it and wanders several kpc from the SF
+[Fe/H] crest, against 0.43 kpc for the all-gas trace.  That run is kept as the
+check, not as the input.  Drawing one line on both figures is also what lets them
+be compared.
+
+**Panel (b) is not marked in white**, unlike the all-gas figure.  Only 20.7 per
+cent of pixels hold enough star-forming gas to be drawn, so the panel is mostly
+blank and white markings vanish into the background instead of standing out
+against it.  The GS/E contour keeps the house violet in both panels and the lane
+keeps the black of panel (a), so the two panels read the same way.
+
+**Projection depth.**  Like the all-gas maps these are cut in x and z but not in
+y, so each pixel integrates through the whole box.  For diffuse gas that adds a
+smooth background; for SF gas it could in principle project an unrelated
+star-forming galaxy into the frame.  Nothing here looks like that, but totals
+should be quoted inside 50 kpc of the host rather than read off the map.
+
+---
+
+## `au18_lane_profile/` -> `Fig_paper/au18_lane_profile.pdf`
+
+The lane seen ALONG its own length.  Two panels against arc length s from the
+GS/E end: (a) [Fe/H] of the halo-born stars formed in snapshot 72, with the
+star-forming gas of the same tube over them; (b) those stars' z_max today.
+
+| script | writes |
+|---|---|
+| `diag_lane_ridge.py`, `lane_path.py` | the traced centreline, shared with the two gas figures |
+| `diag_lane_born_profile.py` | `out/lane_profile_snap72_R3.npz` -- the cache, and every number quoted below |
+| `fig_paper_lane_profile.py` | **the figure**, PDF + PNG |
+
+Selection: in-situ, t_form in the snapshot interval (4.83-4.99 Gyr), halo-born by
+the paper classification (eps_birth <= 0.8 AND z_max_birth >= 1.5 kpc), inside a
+tube of radius 3 kpc about the centreline.  N = 3,285.
+
+**The tube is 3D, the lane mask on the gas maps is not.**  Those maps project
+through y and cannot do better; here the third coordinate exists, so the cut is
+sqrt(d_xz^2 + y^2) < R.  In projection the same cut admits 2,126 more stars, 65
+per cent more, all fore- and background.  R = 3 kpc rather than the gas maps'
+3.5: shrinking the tube from 3.5 to 2.0 narrows the gas spread from 0.45 to 0.37
+dex and leaves the gradient at 0.49 dex either way, so the extra width was
+surroundings rather than lane.
+
+**The two levels are the next step along the lane, not apertures on the two
+galaxies.**  Each is a sphere of the tube radius 1.5 kpc beyond the corresponding
+end of the centreline, along that end's own tangent, tube excluded -- same gas,
+same radius, same mass weighting as the curve.  Apertures on the objects were
+tried first and do not work: the host level came out at -0.08, -0.05, +0.04 or
++0.12 for R < 8, |R-R_land| < 1, |R-R_land| < 2 and R < 4 respectively, because
+each is a different volume with a different selection from the curve, and a curve
+and a level measured differently were never going to meet.
+
+**Whether they meet is then a result.**  At the GS/E end they do: -0.470 against
+the curve's -0.485.  At the host end they do not: +0.239 against +0.009, a 0.23
+dex gap, robust to where the sphere sits (0, 1.5, 3.0, 4.5 kpc beyond the end
+give +0.21, +0.24, +0.23, +0.17, since every step on that side lands inside
+R = 3 kpc).  **That gap is the figure's point:** the lane arrives at the disc
+still poorer than the gas it is joining, so mixing is incomplete where the two
+meet.
+
+**Panel (b) carries a degeneracy that belongs in the caption.**  The lane runs
+from z = -12.1 to +0.2, so s and birth height are nearly the same variable,
+r = -0.98.  A star born high on a halo orbit reaches a large z_max almost by
+construction, so (b) says "stars born high stay high" -- the lane's vertical
+structure survives to z = 0 -- rather than showing an independent trend along the
+lane.  Panel (a) has no such degeneracy: its gradient is in the gas.
+
+z_max today is integrated for 30 circular periods in the snapshot-127 AGAMA
+potential (`prep_zmax_z0.py`), **not** the action approximation, which
+underestimates it by up to ~40 per cent for eccentric orbits
+(`METHOD_zmax_from_Jz.md`).  2.5 per cent of the sample exceeds the 30 kpc clip
+of the panel, from orbits close to unbound.
+
+The shaded ends are where the centreline is extrapolated 1.5 kpc along its own
+tangent; they are named for the object each runs towards rather than measured.
+The y range of (a) is capped at +0.3, not +0.2: the host level sits at +0.24 and
+a 0.2 cap silently clipped the line out of the panel.
+
+The result the pair makes, in one line: **the stars track the gas** -- 16-84
+widths 0.47 and 0.43 dex, gradients 0.34 and 0.50 dex end to end -- so the
+scatter is the ISM's, not the stellar selection's.
+
+---
+
 ## `au18_nitrogen_dispersion/` -> `Fig_paper/au18_nitrogen_dispersion.pdf`
 
 Chemical inhomogeneity of the two birth classes at the GS/E pericentre, and where
@@ -212,8 +416,12 @@ snapshot 72 directly for `GFM_Metals`, plus `out/gse_clean_ids.npy`.
 
 `au18_frame.py` is kept here as a REAL COPY, not a symlink into `../../auriga/`.
 The `main` branch tracks only `Fig_paper` and `Fig_code`, so a link reaching
-outside `Fig_code` resolves on this branch and dangles on `main` -- which is what
-has happened to `Fig_code/FINDINGS.md` and to `au18_gas_metallicity/orbit_tools.py`.
+outside `Fig_code` resolves on this branch and dangles on `main`.  Both cases
+that had gone wrong are now fixed: `au18_gas_metallicity/orbit_tools.py` is a
+real copy, and `Fig_code/FINDINGS.md` pointed at `../../auriga/FINDINGS.md`, one
+`../` too many, so it dangled on BOTH branches -- a fresh session following
+`CONVENTIONS.md`'s instruction to read it before writing a caption got nothing.
+It now points at `../auriga/FINDINGS.md`.
 Anything `Fig_code` needs must live inside `Fig_code`.  Runs in a
 few minutes with the local `astro312`.
 

@@ -50,7 +50,9 @@ against: it says where the gas in (b) is actually turning into stars, so a
 chemically distinctive region that forms nothing cannot be mistaken for one that
 is setting the composition of a new population.
 
-Writes figures/au18_gas_metallicity_sf_snap<NN>.png -- figures/, not Fig_paper/.
+Writes figures/au18_gas_metallicity_sf_snap<NN>.png -- figures/, not Fig_paper/ --
+and caches the maps to out/gas_sf_maps_snap<NN>.npz, which is what the paper
+figure fig_paper_gas_metallicity_sf.py reads.
 """
 import gc, os, sys
 import numpy as np
@@ -183,6 +185,15 @@ print(f'  Sigma_SFR 50/90/99/99.9 percentile: '
 print(f'  pixels with SF gas: {100 * np.isfinite(SIG).mean():.2f} %; '
       f'with a drawn [Fe/H]: {100 * np.isfinite(M).mean():.2f} % '
       f'(holding {100 * den[np.isfinite(M)].sum() / den.sum():.1f} % of the SF gas)')
+
+# Cache the maps so fig_paper_gas_metallicity_sf.py does not have to reload the
+# snapshot.  Same grid, same frame and the same GS/E debris positions as
+# gas_chem_maps_snap<NN>_v4.npz, so the all-gas and star-forming paper figures
+# are the same projection of the same moment and can be read against each other.
+CACHE = C.OUT_DIR + f'/gas_sf_maps_snap{SNAP}.npz'
+np.savez(CACHE, W=W, M=M, SFRD=SFRD, xe=xe, ze=ze, GSE_x=G[:, 0], GSE_z=G[:, 2],
+         XLIM=XLIM, ZLIM=ZLIM, MMIN=MMIN, tsnap=TSNAP)
+print(f'  cached the maps to {CACHE}')
 
 # ---------------------------------- figure -----------------------------------
 FW = 7.8

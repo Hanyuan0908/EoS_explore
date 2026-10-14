@@ -44,6 +44,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, TwoSlopeNorm
 import config_au18 as C
 import au18_frame as AF
+import lane_path as LP
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import orbit_tools as OT
 
@@ -148,8 +149,11 @@ xc, zc = .5 * (xe[:-1] + xe[1:]), .5 * (ze[:-1] + ze[1:])
 X, Z = np.meshgrid(xc, zc, indexing='ij')
 DISC = (np.abs(Z) < 2) & (np.abs(X) < 8)
 GSEM = ((X - GSE_CEN[0]) / GSE_AB[0]) ** 2 + ((Z - GSE_CEN[1]) / GSE_AB[1]) ** 2 < 1
-t = np.clip((X * GSE_CEN[0] + Z * GSE_CEN[1]) / (GSE_CEN[0] ** 2 + GSE_CEN[1] ** 2), 0, 1)
-LANE = (np.hypot(X - t * GSE_CEN[0], Z - t * GSE_CEN[1]) < 3.5) & (t > .25) & (t < .85)
+# The lane mask follows the TRACED ridge, not the straight disc-to-GS/E segment:
+# the bridge bends, and the old line lay off it over much of its length.  Drawn
+# line and quoted number come from the same path -- see lane_path.py.
+LX, LZ = LP.load(C.OUT_DIR, SNAP)
+LANE = LP.mask(X, Z, LX, LZ)
 RNG = [[-XLIM, XLIM], [-ZLIM, ZLIM]]
 
 fig, axes = plt.subplots(3, 3, figsize=(16.5, 13.2), sharex=True, sharey=True)
@@ -186,8 +190,7 @@ for i, (kind, el) in enumerate(PANELS, start=1):
 for a in axes.ravel():
     OT.density_contours(a, gx, gz, RNG, '#00E5FF' if STAT == 'std' else '#4A148C',
                         levels=(0.9, 0.5), bins=70, smooth=1.6, lw=1.6)
-    a.plot([0, GSE_CEN[0]], [0, GSE_CEN[1]],
-           color='w' if STAT == 'std' else 'k', ls='--', lw=1.4, alpha=.8)
+    a.plot(LX, LZ, color='w' if STAT == 'std' else 'k', ls='--', lw=1.4, alpha=.8)
     a.set(aspect='equal', xlim=(-XLIM, XLIM), ylim=(-ZLIM, ZLIM))
 for a in axes[2, :]:
     a.set_xlabel('$x$ [kpc]')

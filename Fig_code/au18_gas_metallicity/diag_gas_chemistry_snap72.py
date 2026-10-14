@@ -43,6 +43,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, TwoSlopeNorm
 import config_au18 as C
+import au18_frame as AF
+import lane_path as LP
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import orbit_tools as OT
 
@@ -51,12 +53,16 @@ SNAP = int(sys.argv[1]) if len(sys.argv) > 1 else 72
 MODE = sys.argv[2] if len(sys.argv) > 2 else 'XFe'
 STAT = sys.argv[3] if len(sys.argv) > 3 else 'mean'
 assert MODE in ('XH', 'XFe') and STAT in ('mean', 'std')
-XLIM, ZLIM, NB, MMIN = 30., 24., 240, 5e5
+# The frame is sized to contain the GS/E, which moves outward between snapshots;
+# fixed limits would crop it at snapshot 73, where it sits at r = 34 kpc.
+XLIM, ZLIM, NB, MMIN = None, None, 240, 5e5
 SPECIES = ['He', 'C', 'N', 'O', 'Ne', 'Mg', 'Si', 'Fe']
 PANELS = ([('XH', e) for e in SPECIES] if MODE == 'XH'
           else [('XH', 'Fe')] + [('XFe', e) for e in SPECIES if e != 'Fe'])
-GSE_CEN, GSE_AB = (-11., -14.), (8., 5.)
-CACHE = C.OUT_DIR + f'/gas_chem_maps_snap{SNAP}_v3.npz'
+# The GS/E centroid moves between snapshots, so it is measured from the debris
+# rather than hard-coded; GSE_AB is the ellipse used to define the "GS/E region".
+GSE_AB = (8., 5.)
+CACHE = C.OUT_DIR + f'/gas_chem_maps_snap{SNAP}_v4.npz'
 
 
 def build():
@@ -84,14 +90,22 @@ def build():
     o = np.argsort(sid); ss = sid[o]; p = np.searchsorted(ss, gid)
     okg = (p < len(ss)) & (ss[np.minimum(p, len(ss) - 1)] == gid)
     G = sp[o[p[okg]]]; del sp, sid; gc.collect()
+    # Remove the arbitrary azimuth: rotate about the disc axis until the GS/E
+    # centroid lies in the x-z plane, so the projection does not foreshorten it.
+    ROT = AF.align_azimuth(np.median(G, axis=0))
+    G = G @ ROT.T
     g = ap.snapshot.load_snapshot(SNAP, 0, snappath=C.SIM_DIR, verbose=False,
         loadlist=['Coordinates', 'Masses', 'Velocities', 'GFM_Metals'])
     g = ap.util.CentreOnHalo(g, cen); ap.util.rotateto(g, xd, dir2=yd, dir3=zd)
     cg = g.data['Coordinates']
-    gp = np.column_stack([cg[:, 1], cg[:, 2], cg[:, 0]]) * 1e3
+    gp = (np.column_stack([cg[:, 1], cg[:, 2], cg[:, 0]]) * 1e3) @ ROT.T
     gm = g.data['Masses'] * C.MASS_TO_MSUN
     met = g.data['GFM_Metals'].astype(np.float64)
     del g, cg; gc.collect()
+    global XLIM, ZLIM
+    gc_ = np.median(G, axis=0)
+    XLIM = float(max(30., abs(gc_[0]) + 9.)); ZLIM = float(max(24., abs(gc_[2]) + 7.))
+    print(f'frame sized to the GS/E: XLIM {XLIM:.0f}, ZLIM {ZLIM:.0f} kpc', flush=True)
     ins = (np.abs(gp[:, 0]) < XLIM) & (np.abs(gp[:, 2]) < ZLIM)
     gp, gm, met = gp[ins], gm[ins], met[ins]
     rng = [[-XLIM, XLIM], [-ZLIM, ZLIM]]
@@ -115,7 +129,8 @@ def build():
             var = np.where(good, s2 / np.where(den > 0, den, 1) - mean ** 2, np.nan)
             out[f'mean_{kind}_{el}'] = mean
             out[f'std_{kind}_{el}'] = np.sqrt(np.clip(var, 0, None))
-    np.savez(CACHE, W=Wm, xe=xe_, ze=ze_, GSE_x=G[:, 0], GSE_z=G[:, 2], **out)
+    np.savez(CACHE, W=Wm, xe=xe_, ze=ze_, GSE_x=G[:, 0], GSE_z=G[:, 2],
+             XLIM=XLIM, ZLIM=ZLIM, **out)
     return Wm, xe_, ze_, G[:, 0], G[:, 2], out
 
 
@@ -123,16 +138,22 @@ if os.path.exists(CACHE):
     c = np.load(CACHE)
     W, xe, ze, gx, gz = c['W'], c['xe'], c['ze'], c['GSE_x'], c['GSE_z']
     MAPS = {k: c[k] for k in c.files if k.startswith(('mean_', 'std_'))}
-    print(f'using cached maps: {CACHE}')
+    XLIM, ZLIM = float(c['XLIM']), float(c['ZLIM'])
+    print(f'using cached maps: {CACHE}  (frame {XLIM:.0f} x {ZLIM:.0f} kpc)')
 else:
     W, xe, ze, gx, gz, MAPS = build()
 
+GSE_CEN = (float(np.median(gx)), float(np.median(gz)))
+print(f'GS/E centroid at snapshot {SNAP}: (x, z) = ({GSE_CEN[0]:.1f}, {GSE_CEN[1]:.1f}) kpc')
 xc, zc = .5 * (xe[:-1] + xe[1:]), .5 * (ze[:-1] + ze[1:])
 X, Z = np.meshgrid(xc, zc, indexing='ij')
 DISC = (np.abs(Z) < 2) & (np.abs(X) < 8)
 GSEM = ((X - GSE_CEN[0]) / GSE_AB[0]) ** 2 + ((Z - GSE_CEN[1]) / GSE_AB[1]) ** 2 < 1
-t = np.clip((X * GSE_CEN[0] + Z * GSE_CEN[1]) / (GSE_CEN[0] ** 2 + GSE_CEN[1] ** 2), 0, 1)
-LANE = (np.hypot(X - t * GSE_CEN[0], Z - t * GSE_CEN[1]) < 3.5) & (t > .25) & (t < .85)
+# The lane mask follows the TRACED ridge, not the straight disc-to-GS/E segment:
+# the bridge bends, and the old line lay off it over much of its length.  Drawn
+# line and quoted number come from the same path -- see lane_path.py.
+LX, LZ = LP.load(C.OUT_DIR, SNAP)
+LANE = LP.mask(X, Z, LX, LZ)
 RNG = [[-XLIM, XLIM], [-ZLIM, ZLIM]]
 
 fig, axes = plt.subplots(3, 3, figsize=(16.5, 13.2), sharex=True, sharey=True)
@@ -169,8 +190,7 @@ for i, (kind, el) in enumerate(PANELS, start=1):
 for a in axes.ravel():
     OT.density_contours(a, gx, gz, RNG, '#00E5FF' if STAT == 'std' else '#4A148C',
                         levels=(0.9, 0.5), bins=70, smooth=1.6, lw=1.6)
-    a.plot([0, GSE_CEN[0]], [0, GSE_CEN[1]],
-           color='w' if STAT == 'std' else 'k', ls='--', lw=1.4, alpha=.8)
+    a.plot(LX, LZ, color='w' if STAT == 'std' else 'k', ls='--', lw=1.4, alpha=.8)
     a.set(aspect='equal', xlim=(-XLIM, XLIM), ylim=(-ZLIM, ZLIM))
 for a in axes[2, :]:
     a.set_xlabel('$x$ [kpc]')
