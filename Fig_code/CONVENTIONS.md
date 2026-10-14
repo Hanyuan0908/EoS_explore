@@ -96,6 +96,7 @@ of MB and that some viewers will not open.
 | born-cold / disc-born | `#1F6FB2` blue | also `Blues` |
 | total / all stars | `#2B2B2B` near-black, or `Greys` | |
 | GS/E marker (pericentre line, debris contour) | `#8E24AA` violet | must not be any warm red or orange -- clashes with born-hot |
+| GS/E contour **over a viridis map** | `#D500F9` bright violet | `#8E24AA` is viridis's own low end, so it vanishes exactly where the satellite is; this is the same hue raised in lightness and saturation.  Used in `au18_gas_metallicity` and `au18_gas_metallicity_sf`, both panels of each |
 | disc spin-up marker | `#00897B` teal | |
 | kinematic cut lines (Eos band, birth split) | `#E8112D` red | warm, so a cool map cannot swallow it |
 | gas surface density | `Greys`, capped ~0.7-0.82 | so overplotted points stay visible |
@@ -171,6 +172,17 @@ saturated half and read as blood-red -- the look that was rejected once already.
 Placing tomato at 0.72 and giving the pale end most of the range keeps the same
 hue while the bulk of the panel stays light.  Judge a sequential map on the
 figure that uses it most heavily, not on the colourbar.
+
+**A marker colour has to clear the colour map it is drawn on, not just the page.**
+The house GS/E violet `#8E24AA` is close to viridis's dark-violet low end, so on a
+gas [Fe/H] map the contour disappears over metal-poor gas -- which is the
+satellite, the one thing it is there to mark.  White fails for the opposite
+reason on a sparse map (the star-forming panel is 79 per cent blank), and grey or
+black fail on both the dark end and the `Greys` panel next to it.  Red is the
+most legible and is forbidden here for the born-hot clash.  The fix that keeps
+the convention's meaning is to raise the lightness and saturation of the same
+hue, `#D500F9`.  Judge a marker colour against every background it will cross,
+including the blank one.
 
 **Diverging colour maps imply a midpoint.**  `RdYlBu_r` on gas [Fe/H] made the
 pale band near -0.45 read as a boundary between two regimes when it is just a

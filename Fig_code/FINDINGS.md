@@ -1,1 +1,1 @@
-../../auriga/FINDINGS.md
+../auriga/FINDINGS.md
