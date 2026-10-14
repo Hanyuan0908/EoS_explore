@@ -305,6 +305,37 @@ snapshot 72 directly for the maps.  A run takes a few minutes with the local
 
 ---
 
+## `au18_birth_overview/` -> `Fig_paper/au18_birth_overview.pdf`
+
+The 1x3 variant of `au18_birth_classes`: its two maps merged into a single panel
+with both birth classes overplotted, in the style of `au18_birth_positions_gas`,
+with the star-formation panels to its right.  (a) both classes at the GS/E
+pericentre over the gas, with the clean-debris contours; (b) the star-formation
+history split by class; (c) their ratio.
+
+`au18_birth_classes` is kept.  The merged map trades the clean separation of the
+two-panel version -- where each class had the gas to itself -- for a direct
+comparison of where the two sit relative to one another.
+
+**Draw order is not cosmetic**: disc-born first, halo-born over it.  With the
+reverse order the halo-born lane is buried wherever it crosses the midplane, and
+the structure the panel exists to show disappears.  Opacity is scaled to each
+class's N (`clip(2500/N, 0.10, 0.75)`), since they differ by 2x.
+
+Counts a rerun must reproduce are those of `au18_birth_classes`: 26,064 disc-born
+and 12,608 halo-born in the snapshot-72 window, 21,487 clean GS/E debris, peak
+halo/disc SFR ratio 0.46 at t = 4.96 Gyr.
+
+Panel rectangles are placed explicitly in inches, for the reason recorded under
+`au18_birth_classes` and `au18_nitrogen_map`: (a) is forced to `aspect='equal'`
+and (b), (c) are not, and `tight_layout` will not keep a mixed row aligned.
+
+Same chain and environment as `au18_birth_classes`; `au18_frame.py` and
+`orbit_tools.py` are symlinks to the copies held in `au18_nitrogen_dispersion`
+and `au18_birth_classes`, both inside `Fig_code` so they survive on `main`.
+
+---
+
 # Observational figures (APOGEE) — made on the Mac; see `CONVENTIONS_observational.md`
 
 ## `obs_mg_al_meanal/` -> `Fig_paper/obs_mg_al_meanal.pdf`
